@@ -174,6 +174,31 @@
   .sunGlow{ animation:glowp 5s ease-in-out infinite alternate; }
   @keyframes glowp{ from{opacity:.35} to{opacity:.7} }
 
+  /* doodle + touchable scene */
+  .doodleBar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .doodleBar .status{ font-size:12px; font-family:ui-sans-serif,system-ui,sans-serif; color:var(--ink-soft); }
+  button.ghost.on{ border-color:var(--accent); color:var(--accent); font-weight:600; }
+  #previewCard.doodling{ cursor:crosshair; touch-action:none; }
+  #previewCard.doodling svg{ -webkit-user-select:none; user-select:none; }
+  [data-item]{ cursor:pointer; }
+  .catStretch{ transform-box:fill-box; transform-origin:bottom center; animation:catst .9s ease; }
+  @keyframes catst{ 0%{transform:scaleY(1)} 35%{transform:scaleY(1.16) scaleX(.95)} 70%{transform:scaleY(.93) scaleX(1.06)} 100%{transform:scaleY(1)} }
+  .heartUp{ animation:floatup 1.5s ease forwards; }
+  .noteUp{ animation:floatup 2.1s ease forwards; }
+  @keyframes floatup{ from{opacity:0; transform:translateY(0)} 25%{opacity:1} to{opacity:0; transform:translateY(-26px)} }
+  .smokeRise circle{ animation:smokeup 2.1s ease forwards; }
+  @keyframes smokeup{ from{opacity:.7; transform:translateY(0)} to{opacity:0; transform:translateY(-24px)} }
+  .steamBurst .steam{ animation-duration:1.1s !important; }
+  .radioOn .dialLite{ fill:#ffd97a; }
+  .sndBtn{
+    position:absolute; top:10px; right:10px; z-index:5; display:none;
+    border:1px solid var(--line); background:rgba(255,253,247,.92); border-radius:999px;
+    width:40px; height:40px; font-size:17px; cursor:pointer;
+  }
+  .sndBtn.show{ display:block; }
+  .tapHint{ margin-top:10px; font-size:13px; color:var(--ink-soft); font-family:ui-sans-serif,system-ui,sans-serif; opacity:0; transition:opacity 1s ease .8s; }
+  .tapHint.show{ opacity:1; }
+
   /* reveal curtains */
   .cpanelL,.cpanelR{ transition:transform 2.3s cubic-bezier(.65,0,.3,1); }
   #viewerScene.open .cpanelL{ transform:translateX(-318px); }
@@ -207,6 +232,15 @@
         <section class="opt" id="sec-curtain"><h2>Curtains</h2><div class="tray"></div></section>
         <section class="opt" id="sec-items"><h2>On the sill <span class="hint">tap to add · up to 5</span></h2><div class="tray"></div></section>
         <section class="opt" id="sec-extras"><h2>Hanging up <span class="hint">tap to toggle</span></h2><div class="tray"></div></section>
+
+        <section class="opt" id="sec-doodle">
+          <h2>On the glass <span class="hint">fog it up and draw with your finger — they'll watch it appear</span></h2>
+          <div class="doodleBar">
+            <button class="ghost" id="btnDoodle">✏️ Doodle on the glass</button>
+            <button class="ghost" id="btnDoodleClear">Clear</button>
+            <span class="status" id="doodleStatus"></span>
+          </div>
+        </section>
 
         <section class="opt">
           <h2>Your note</h2>
@@ -248,7 +282,9 @@
       <div class="windowCard">
         <div id="viewerScene"></div>
         <div id="curtainHint"><span>tap to draw the curtains ✧</span></div>
+        <button class="sndBtn" id="btnMute" title="sound on/off">🔊</button>
       </div>
+      <div class="tapHint" id="tapHint">psst — try tapping the things on the sill ✧</div>
       <div class="msgCard" id="msgCard">
         <div class="to" id="vTo"></div>
         <div class="msg" id="vMsg"></div>
@@ -508,7 +544,7 @@ const ITEMS = {
     <circle cx="-8" cy="-13" r="7" fill="#3e5f5b"/>
     <line x1="-12" y1="-15" x2="-4" y2="-15" stroke="#5e8f8a" stroke-width="1.2"/>
     <line x1="-12" y1="-11" x2="-4" y2="-11" stroke="#5e8f8a" stroke-width="1.2"/>
-    <circle cx="9" cy="-16" r="4.4" fill="#f2e6d0"/><circle cx="9" cy="-16" r="1.4" fill="#8a5a3a"/>
+    <circle cx="9" cy="-16" r="4.4" fill="#f2e6d0" class="dialLite"/><circle cx="9" cy="-16" r="1.4" fill="#8a5a3a"/>
     <circle cx="9" cy="-6.5" r="2.6" fill="#f2e6d0"/>
   `;}},
 };
@@ -558,9 +594,42 @@ const EXTRAS = {
   }},
 };
 
+/* ============ fog doodle (drawn on the glass, packed into the link) ============ */
+const DCH="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+const MAX_DOODLE_PTS=380;
+function encDoodle(strokes){
+  const q=(v,o,s)=>DCH[Math.max(0,Math.min(60,Math.round((v-o)/s)))];
+  return strokes.map(st=>st.map(p=>q(p[0],VX,5)+q(p[1],VY,6)).join("")).join("~");
+}
+function decDoodle(d){
+  if(!d) return [];
+  const strokes=[];
+  for(const s of d.split("~")){
+    const pts=[];
+    for(let i=0;i+1<s.length;i+=2){
+      const xi=DCH.indexOf(s[i]), yi=DCH.indexOf(s[i+1]);
+      if(xi<0||yi<0) continue;
+      pts.push([VX+xi*5, VY+yi*6]);
+    }
+    if(pts.length>1) strokes.push(pts);
+  }
+  return strokes;
+}
+function doodleSVG(d){
+  const strokes=decDoodle(d);
+  if(!strokes.length) return "";
+  let halos="", mains="";
+  for(const pts of strokes){
+    const path="M"+pts.map(p=>p[0].toFixed(0)+" "+p[1].toFixed(0)).join(" L ");
+    halos+=`<path class="doodleHalo" d="${path}" stroke="#ffffff" stroke-width="16" opacity=".26" fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#fogBlur)"/>`;
+    mains+=`<path class="doodleMain" d="${path}" stroke="#ffffff" stroke-width="4.5" opacity=".85" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  return `<g>${halos}${mains}</g>`;
+}
+
 /* ============ state ============ */
 const MAX_ITEMS=5;
-let state={ view:"meadow", weather:"none", frame:"classic", curtain:"none", items:["monstera","cat"], extras:[], to:"", msg:"", from:"" };
+let state={ view:"meadow", weather:"none", frame:"classic", curtain:"none", items:["monstera","cat"], extras:[], d:"", to:"", msg:"", from:"" };
 
 /* ============ scene assembly ============ */
 function itemSlots(n){
@@ -578,7 +647,7 @@ function drawScene(st, opts){
   let items="";
   st.items.forEach((id,i)=>{
     const it=ITEMS[id]; if(!it) return;
-    items+=`<g transform="translate(${xs[i]},431)">${it.draw()}</g>`;
+    items+=`<g transform="translate(${xs[i]},431)" data-item="${id}">${it.draw()}</g>`;
   });
   let extras="";
   for(const id of st.extras){ const ex=EXTRAS[id]; if(ex) extras+=ex.draw(); }
@@ -604,10 +673,13 @@ function drawScene(st, opts){
   }
 
   return `<svg viewBox="0 0 420 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="a window scene">
-    <defs><clipPath id="viewClip"><rect x="${VX}" y="${VY}" width="${VW}" height="${VH}"/></clipPath></defs>
+    <defs>
+      <clipPath id="viewClip"><rect x="${VX}" y="${VY}" width="${VW}" height="${VH}"/></clipPath>
+      <filter id="fogBlur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5"/></filter>
+    </defs>
     <rect x="0" y="0" width="420" height="470" rx="10" fill="#f2e7d3"/>
     <rect x="0" y="0" width="420" height="470" rx="10" fill="none" stroke="#e3d5ba" stroke-width="2"/>
-    <g clip-path="url(#viewClip)">${view.draw()}${weather.draw()}</g>
+    <g clip-path="url(#viewClip)">${view.draw()}${weather.draw()}${doodleSVG(st.d)}</g>
     ${drawFrame(frame)}
     ${extras}
     ${items}
@@ -618,7 +690,7 @@ function drawScene(st, opts){
 
 /* ============ url encoding ============ */
 function encodeState(st){
-  const compact={ v:st.view,w:st.weather,f:st.frame,c:st.curtain,i:st.items,e:st.extras,t:st.to,m:st.msg,s:st.from };
+  const compact={ v:st.view,w:st.weather,f:st.frame,c:st.curtain,i:st.items,e:st.extras,d:st.d,t:st.to,m:st.msg,s:st.from };
   const json=JSON.stringify(compact);
   return btoa(unescape(encodeURIComponent(json))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
@@ -633,15 +705,313 @@ function decodeState(hash){
       curtain:(o.c in CURTAINS)?o.c:"none",
       items:Array.isArray(o.i)?o.i.filter(x=>x in ITEMS).slice(0,MAX_ITEMS):[],
       extras:Array.isArray(o.e)?o.e.filter(x=>x in EXTRAS):[],
+      d:(typeof o.d==="string" && /^[A-Za-z0-9\-_~]*$/.test(o.d) && o.d.length<=1400)?o.d:"",
       to:String(o.t||"").slice(0,60), msg:String(o.m||"").slice(0,500), from:String(o.s||"").slice(0,60),
     };
   }catch(err){ return null; }
 }
 
+/* ============ sound engine (pure WebAudio — no files) ============ */
+const Snd=(function(){
+  let ctx=null, master=null, muted=false;
+  let amb={nodes:[],timers:[]}, radio={nodes:[],timers:[],on:false};
+  function ensure(){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC) return null;
+    if(!ctx){ ctx=new AC(); master=ctx.createGain(); master.gain.value=muted?0:1; master.connect(ctx.destination); }
+    if(ctx.state==="suspended") ctx.resume();
+    return ctx;
+  }
+  function noiseBuf(){
+    const b=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate), d=b.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+    return b;
+  }
+  function noiseSrc(){ const s=ctx.createBufferSource(); s.buffer=noiseBuf(); s.loop=true; return s; }
+  function stopSet(set){
+    for(const t of set.timers) clearInterval(t);
+    set.timers=[];
+    for(const n of set.nodes){ try{ if(n.stop)n.stop(); n.disconnect(); }catch(e){} }
+    set.nodes=[];
+  }
+  function toggleMute(){
+    muted=!muted;
+    if(master) master.gain.setTargetAtTime(muted?0:1, ctx.currentTime, .05);
+    return muted;
+  }
+  /* --- one-shots --- */
+  function purr(){
+    if(!ensure()) return;
+    const t=ctx.currentTime;
+    const osc=ctx.createOscillator(); osc.type="sawtooth"; osc.frequency.value=52;
+    const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=140;
+    const g=ctx.createGain(); g.gain.value=0;
+    const lfo=ctx.createOscillator(); lfo.frequency.value=23;
+    const lfoG=ctx.createGain(); lfoG.gain.value=.06;
+    lfo.connect(lfoG); lfoG.connect(g.gain);
+    osc.connect(lp); lp.connect(g); g.connect(master);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.13,t+.25);
+    g.gain.setValueAtTime(.13,t+1.4); g.gain.linearRampToValueAtTime(0,t+1.9);
+    osc.start(t); lfo.start(t); osc.stop(t+2); lfo.stop(t+2);
+  }
+  function blow(){
+    if(!ensure()) return;
+    const t=ctx.currentTime;
+    const s=ctx.createBufferSource(); s.buffer=noiseBuf();
+    const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=700;
+    const g=ctx.createGain();
+    s.connect(lp); lp.connect(g); g.connect(master);
+    g.gain.setValueAtTime(.22,t); g.gain.exponentialRampToValueAtTime(.001,t+.35);
+    s.start(t); s.stop(t+.4);
+  }
+  function chirpPulse(base,when,vol){
+    const o=ctx.createOscillator(); o.type="sine"; o.frequency.value=base;
+    const g=ctx.createGain(); g.gain.value=0;
+    o.connect(g); g.connect(master);
+    g.gain.setValueAtTime(0,when); g.gain.linearRampToValueAtTime(vol,when+.015);
+    g.gain.exponentialRampToValueAtTime(.001,when+.07);
+    o.start(when); o.stop(when+.09);
+  }
+  /* --- ambience --- */
+  function startAmb(kind){
+    if(!ensure()||!kind) return;
+    stopSet(amb);
+    if(kind==="rain"){
+      const s=noiseSrc();
+      const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=1500;
+      const g=ctx.createGain(); g.gain.value=0;
+      s.connect(lp); lp.connect(g); g.connect(master);
+      g.gain.linearRampToValueAtTime(.055,ctx.currentTime+1.5);
+      s.start(); amb.nodes.push(s,lp,g);
+    }else if(kind==="wind"){
+      const s=noiseSrc();
+      const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=350;
+      const g=ctx.createGain(); g.gain.value=0;
+      const lfo=ctx.createOscillator(); lfo.frequency.value=.09;
+      const lfoG=ctx.createGain(); lfoG.gain.value=.018;
+      lfo.connect(lfoG); lfoG.connect(g.gain);
+      s.connect(lp); lp.connect(g); g.connect(master);
+      g.gain.linearRampToValueAtTime(.04,ctx.currentTime+2);
+      s.start(); lfo.start(); amb.nodes.push(s,lp,g,lfo);
+    }else if(kind==="crickets"){
+      amb.timers.push(setInterval(()=>{
+        const base=4000+Math.random()*500, t=ctx.currentTime;
+        for(let k=0;k<3;k++) chirpPulse(base,t+k*.09,.022);
+      },700+Math.random()*500));
+    }else if(kind==="birdsong"){
+      amb.timers.push(setInterval(()=>{
+        if(Math.random()<.35) return;
+        const t=ctx.currentTime, n=2+Math.floor(Math.random()*3);
+        for(let k=0;k<n;k++){
+          const o=ctx.createOscillator(); o.type="sine";
+          const st=t+k*.19, f0=3200+Math.random()*600;
+          o.frequency.setValueAtTime(f0,st);
+          o.frequency.exponentialRampToValueAtTime(f0*.68,st+.13);
+          const g=ctx.createGain(); g.gain.value=0;
+          o.connect(g); g.connect(master);
+          g.gain.setValueAtTime(0,st); g.gain.linearRampToValueAtTime(.035,st+.03);
+          g.gain.exponentialRampToValueAtTime(.001,st+.16);
+          o.start(st); o.stop(st+.2);
+        }
+      },2600));
+    }
+  }
+  function stopAmb(){ if(ctx) stopSet(amb); }
+  /* --- lo-fi radio --- */
+  const CHORDS=[
+    [220.0,261.6,329.6,392.0],   // Am7-ish
+    [174.6,220.0,261.6,349.2],   // Fmaj7-ish
+    [196.0,246.9,293.7,392.0],   // G-ish
+    [146.8,220.0,261.6,349.2],   // Dm7-ish
+  ];
+  function playChord(freqs){
+    const t=ctx.currentTime;
+    const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=750;
+    const g=ctx.createGain(); g.gain.value=0;
+    lp.connect(g); g.connect(master);
+    for(const f of freqs){
+      for(const det of [1,1.004]){
+        const o=ctx.createOscillator(); o.type="triangle"; o.frequency.value=f*det;
+        o.connect(lp); o.start(t); o.stop(t+3.4); radio.nodes.push(o);
+      }
+    }
+    const b=ctx.createOscillator(); b.type="sine"; b.frequency.value=freqs[0]/2;
+    const bg=ctx.createGain(); bg.gain.value=0;
+    b.connect(bg); bg.connect(master);
+    bg.gain.setValueAtTime(0,t); bg.gain.linearRampToValueAtTime(.05,t+.4);
+    bg.gain.linearRampToValueAtTime(0,t+3.2);
+    b.start(t); b.stop(t+3.4); radio.nodes.push(b,bg);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.024,t+.9);
+    g.gain.linearRampToValueAtTime(.001,t+3.3);
+    radio.nodes.push(lp,g);
+  }
+  function radioStart(){
+    if(!ensure()) return;
+    if(radio.on) return; radio.on=true;
+    const s=noiseSrc();
+    const hp=ctx.createBiquadFilter(); hp.type="highpass"; hp.frequency.value=3200;
+    const g=ctx.createGain(); g.gain.value=.008;
+    s.connect(hp); hp.connect(g); g.connect(master);
+    s.start(); radio.nodes.push(s,hp,g);
+    radio.timers.push(setInterval(()=>{ // vinyl pops
+      const t=ctx.currentTime, p=ctx.createBufferSource(); p.buffer=noiseBuf();
+      const pg=ctx.createGain();
+      p.connect(pg); pg.connect(master);
+      pg.gain.setValueAtTime(.05,t); pg.gain.exponentialRampToValueAtTime(.001,t+.02);
+      p.start(t); p.stop(t+.03);
+    },500+Math.random()*600));
+    let ci=0;
+    playChord(CHORDS[0]);
+    radio.timers.push(setInterval(()=>{ ci=(ci+1)%CHORDS.length; playChord(CHORDS[ci]); },3400));
+  }
+  function radioStop(){ radio.on=false; if(ctx) stopSet(radio); }
+  return { ensure, toggleMute, purr, blow, startAmb, stopAmb, radioStart, radioStop, isRadioOn:()=>radio.on };
+})();
+
+/* ============ touchable scene ============ */
+const SVGNS="http://www.w3.org/2000/svg";
+let radioNoteTimer=null;
+function svgText(str,attrs){
+  const t=document.createElementNS(SVGNS,"text");
+  for(const k in attrs) t.setAttribute(k,attrs[k]);
+  t.textContent=str;
+  return t;
+}
+function tapCat(g){
+  if(!g.classList.contains("catStretch")){
+    g.classList.add("catStretch");
+    setTimeout(()=>g.classList.remove("catStretch"),950);
+  }
+  const h=svgText("♥",{x:"-2",y:"-40","font-size":"13",fill:"#e56b8c",class:"heartUp","text-anchor":"middle"});
+  g.appendChild(h); setTimeout(()=>h.remove(),1600);
+  Snd.ensure(); Snd.purr();
+}
+function tapCandle(g){
+  const flames=g.querySelectorAll(".flame");
+  if(!g.dataset.out){
+    g.dataset.out="1";
+    flames.forEach(f=>f.style.display="none");
+    const smoke=document.createElementNS(SVGNS,"g");
+    smoke.setAttribute("class","smokeRise");
+    smoke.innerHTML='<circle cx="0" cy="-36" r="2.6" fill="#b9b0a2"/><circle cx="2.5" cy="-42" r="2" fill="#c8c0b2"/>';
+    g.appendChild(smoke); setTimeout(()=>smoke.remove(),2100);
+    Snd.ensure(); Snd.blow();
+  }else{
+    g.dataset.out="";
+    flames.forEach(f=>f.style.display="");
+  }
+}
+function tapMug(g){
+  g.classList.add("steamBurst");
+  setTimeout(()=>g.classList.remove("steamBurst"),3000);
+}
+function tapRadio(g,container){
+  Snd.ensure();
+  if(!Snd.isRadioOn()){
+    Snd.radioStart();
+    g.classList.add("radioOn");
+    radioNoteTimer=setInterval(()=>{
+      const cur=container.querySelector('[data-item="radio"]');
+      if(!cur) return;
+      cur.classList.add("radioOn");
+      const n=svgText(Math.random()<.5?"♪":"♫",{x:(-8+Math.random()*16).toFixed(0),y:"-32","font-size":"11",fill:"#4a7a74",class:"noteUp","text-anchor":"middle"});
+      cur.appendChild(n); setTimeout(()=>n.remove(),2100);
+    },900);
+  }else{
+    Snd.radioStop();
+    clearInterval(radioNoteTimer); radioNoteTimer=null;
+    const cur=container.querySelector('[data-item="radio"]');
+    if(cur) cur.classList.remove("radioOn");
+  }
+}
+function attachInteractions(container, isEditor){
+  container.addEventListener("click",ev=>{
+    if(isEditor && doodleMode) return;
+    const g=ev.target.closest("[data-item]");
+    if(!g||!container.contains(g)) return;
+    const id=g.getAttribute("data-item");
+    if(id==="cat") tapCat(g);
+    else if(id==="candle") tapCandle(g);
+    else if(id==="mug") tapMug(g);
+    else if(id==="radio") tapRadio(g,container);
+  });
+}
+
 /* ============ editor ui ============ */
 const $=s=>document.querySelector(s);
 
-function renderPreview(){ $("#previewCard").innerHTML=drawScene(state); }
+function renderPreview(){
+  $("#previewCard").innerHTML=drawScene(state);
+  if(Snd.isRadioOn()){
+    const g=$("#previewCard [data-item=radio]");
+    if(g) g.classList.add("radioOn");
+  }
+}
+
+/* --- doodle capture --- */
+let doodleMode=false, doodleStrokes=[], doodlePts=0, curStroke=null, curPoly=null;
+function syncDoodle(){
+  state.d=encDoodle(doodleStrokes);
+  const st=$("#doodleStatus");
+  st.textContent=doodlePts?("fog ink: "+Math.min(100,Math.round(100*doodlePts/MAX_DOODLE_PTS))+"% used"):"";
+}
+function previewPoint(ev){
+  const svg=$("#previewCard svg");
+  if(!svg) return null;
+  const r=svg.getBoundingClientRect();
+  return [(ev.clientX-r.left)*420/r.width, (ev.clientY-r.top)*470/r.height];
+}
+function inView(p){ return p[0]>=VX&&p[0]<=VX+VW&&p[1]>=VY&&p[1]<=VB; }
+function initDoodle(){
+  const card=$("#previewCard");
+  $("#btnDoodle").addEventListener("click",()=>{
+    doodleMode=!doodleMode;
+    $("#btnDoodle").classList.toggle("on",doodleMode);
+    card.classList.toggle("doodling",doodleMode);
+    if(doodleMode) card.scrollIntoView({behavior:"smooth",block:"nearest"});
+  });
+  $("#btnDoodleClear").addEventListener("click",()=>{
+    doodleStrokes=[]; doodlePts=0; syncDoodle(); renderPreview();
+  });
+  card.addEventListener("pointerdown",ev=>{
+    if(!doodleMode||doodlePts>=MAX_DOODLE_PTS) return;
+    const p=previewPoint(ev);
+    if(!p||!inView(p)) return;
+    ev.preventDefault();
+    try{ card.setPointerCapture(ev.pointerId); }catch(e){}
+    curStroke=[p];
+    const svg=$("#previewCard svg");
+    curPoly=document.createElementNS(SVGNS,"polyline");
+    curPoly.setAttribute("fill","none"); curPoly.setAttribute("stroke","#ffffff");
+    curPoly.setAttribute("stroke-width","4.5"); curPoly.setAttribute("opacity",".85");
+    curPoly.setAttribute("stroke-linecap","round"); curPoly.setAttribute("stroke-linejoin","round");
+    curPoly.setAttribute("points",p[0]+","+p[1]);
+    svg.appendChild(curPoly);
+  });
+  card.addEventListener("pointermove",ev=>{
+    if(!curStroke) return;
+    const p=previewPoint(ev);
+    if(!p) return;
+    p[0]=Math.max(VX,Math.min(VX+VW,p[0]));
+    p[1]=Math.max(VY,Math.min(VB,p[1]));
+    const last=curStroke[curStroke.length-1];
+    if(Math.hypot(p[0]-last[0],p[1]-last[1])<5) return;
+    if(doodlePts+curStroke.length>=MAX_DOODLE_PTS) return;
+    curStroke.push(p);
+    curPoly.setAttribute("points",curPoly.getAttribute("points")+" "+p[0]+","+p[1]);
+  });
+  const endStroke=()=>{
+    if(!curStroke) return;
+    if(curStroke.length>1){
+      doodleStrokes.push(curStroke);
+      doodlePts+=curStroke.length;
+    }
+    curStroke=null; curPoly=null;
+    syncDoodle(); renderPreview();
+  };
+  card.addEventListener("pointerup",endStroke);
+  card.addEventListener("pointercancel",endStroke);
+}
 
 function makeSwatch(label, thumbHTML, selected, onClick){
   const b=document.createElement("button");
@@ -724,6 +1094,8 @@ function buildShareUrl(){
 
 function initEditor(){
   renderAllTrays(); renderPreview();
+  initDoodle();
+  attachInteractions($("#previewCard"), true);
   $("#btnRandom").addEventListener("click",randomize);
   $("#btnShare").addEventListener("click",()=>{
     const url=buildShareUrl();
@@ -745,15 +1117,58 @@ function initEditor(){
 }
 
 /* ============ viewer ============ */
+function ambienceFor(st){
+  if(st.weather==="rain") return "rain";
+  if(st.weather==="snow") return "wind";
+  if(st.weather==="fireflies") return "crickets";
+  if(st.weather==="birds") return "birdsong";
+  if(st.view==="starry") return "crickets";
+  return null;
+}
+function animateDoodle(sceneEl, baseDelay){
+  const mains=[...sceneEl.querySelectorAll(".doodleMain")];
+  const halos=[...sceneEl.querySelectorAll(".doodleHalo")];
+  let delay=baseDelay;
+  mains.forEach((p,i)=>{
+    const len=p.getTotalLength(), dur=Math.max(.4,len/130);
+    p.style.transition=`stroke-dashoffset ${dur}s linear ${delay}s`;
+    const h=halos[i];
+    if(h) h.style.transition=`opacity ${dur}s ease ${delay}s`;
+    requestAnimationFrame(()=>{
+      p.style.strokeDashoffset=0;
+      if(h) h.style.opacity=.26;
+    });
+    delay+=dur+.15;
+  });
+}
 function initViewer(st){
   document.body.classList.add("viewing");
   const sceneEl=$("#viewerScene");
   sceneEl.innerHTML=drawScene(st,{reveal:true});
+  // hide doodle strokes until the curtains open
+  sceneEl.querySelectorAll(".doodleMain").forEach(p=>{
+    const len=p.getTotalLength();
+    p.style.strokeDasharray=len; p.style.strokeDashoffset=len;
+  });
+  sceneEl.querySelectorAll(".doodleHalo").forEach(h=>{ h.style.opacity=0; });
+  attachInteractions(sceneEl, false);
   let opened=false;
   sceneEl.addEventListener("click",()=>{
     if(opened) return; opened=true;
     sceneEl.classList.add("open");
     $("#curtainHint").style.opacity="0";
+    Snd.ensure();
+    const amb=ambienceFor(st);
+    if(amb) Snd.startAmb(amb);
+    const mute=$("#btnMute");
+    mute.classList.add("show");
+    mute.addEventListener("click",ev=>{
+      ev.stopPropagation();
+      mute.textContent=Snd.toggleMute()?"🔇":"🔊";
+    });
+    animateDoodle(sceneEl, 2.1);
+    if(st.items.some(id=>["cat","candle","mug","radio"].includes(id)))
+      setTimeout(()=>$("#tapHint").classList.add("show"),2200);
     setTimeout(()=>{
       $("#vTo").textContent=st.to?("to "+st.to):"to you";
       $("#vMsg").textContent=st.msg||"wish you were here.";
