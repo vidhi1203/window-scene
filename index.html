@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>wish you were here · make a window</title>
 <meta name="description" content="Compose a little window scene and send it to someone you miss.">
 <meta property="og:type" content="website">
@@ -28,7 +28,7 @@
     --line:#e7dcc8;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{-webkit-text-size-adjust:100%}
+  html{-webkit-text-size-adjust:100%; overflow-x:hidden; width:100%; max-width:100%;}
   body{
     background:var(--cream);
     color:var(--ink);
@@ -36,6 +36,7 @@
     min-height:100vh;
     background-image:radial-gradient(#efe5d2 1px, transparent 1px);
     background-size:26px 26px;
+    overflow-x:hidden; width:100%; max-width:100%;
   }
   header{ text-align:center; padding:34px 16px 10px; }
   header .eyebrow{
@@ -46,7 +47,7 @@
   header h1{ font-size:clamp(28px,5vw,42px); font-weight:600; font-style:italic; margin-top:6px; }
   header p.sub{ color:var(--ink-soft); margin-top:8px; font-size:15px; }
 
-  main{ max-width:1060px; margin:0 auto; padding:18px 16px 80px; }
+  main{ max-width:1060px; width:100%; margin:0 auto; padding:18px 16px 80px; }
 
   /* ---------- editor layout ---------- */
   .studio{ display:grid; grid-template-columns:minmax(300px,430px) 1fr; gap:28px; align-items:start; }
@@ -65,7 +66,7 @@
     background:var(--card); border:1px solid var(--line); border-radius:18px;
     padding:18px; box-shadow:0 10px 30px rgba(90,70,40,.10);
   }
-  .windowCard svg{ width:100%; height:auto; display:block; }
+  .windowCard svg{ width:100%; max-width:100%; height:auto; display:block; }
 
   .panel{ display:flex; flex-direction:column; gap:26px; }
   section.opt h2{
