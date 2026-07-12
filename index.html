@@ -238,6 +238,8 @@
         <section class="opt" id="sec-items"><h2>On the sill <span class="hint">tap to add · up to 5</span></h2><div class="tray"></div></section>
         <section class="opt" id="sec-extras"><h2>Hanging up <span class="hint">tap to toggle</span></h2><div class="tray"></div></section>
 
+        <section class="opt" id="sec-sound"><h2>Ambient sound <span class="hint">tap to preview</span></h2><div class="tray"></div></section>
+
         <section class="opt" id="sec-doodle">
           <h2>On the glass <span class="hint">fog it up and draw with your finger — they'll watch it appear</span></h2>
           <div class="doodleBar">
@@ -660,7 +662,7 @@ function doodleSVG(d){
 
 /* ============ state ============ */
 const MAX_ITEMS=5;
-let state={ view:"meadow", weather:"none", frame:"classic", curtain:"none", items:["monstera","cat"], extras:[], d:"", to:"", msg:"", from:"" };
+let state={ view:"meadow", weather:"none", frame:"classic", curtain:"none", items:["monstera","cat"], extras:[], d:"", snd:"auto", to:"", msg:"", from:"" };
 
 /* ============ scene assembly ============ */
 function itemSlots(n){
@@ -721,7 +723,7 @@ function drawScene(st, opts){
 
 /* ============ url encoding ============ */
 function encodeState(st){
-  const compact={ v:st.view,w:st.weather,f:st.frame,c:st.curtain,i:st.items,e:st.extras,d:st.d,t:st.to,m:st.msg,s:st.from };
+  const compact={ v:st.view,w:st.weather,f:st.frame,c:st.curtain,i:st.items,e:st.extras,d:st.d,z:st.snd,t:st.to,m:st.msg,s:st.from };
   const json=JSON.stringify(compact);
   return btoa(unescape(encodeURIComponent(json))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
@@ -737,6 +739,7 @@ function decodeState(hash){
       items:Array.isArray(o.i)?o.i.filter(x=>x in ITEMS).slice(0,MAX_ITEMS):[],
       extras:Array.isArray(o.e)?o.e.filter(x=>x in EXTRAS):[],
       d:(typeof o.d==="string" && /^[A-Za-z0-9\-_~]*$/.test(o.d) && o.d.length<=1400)?o.d:"",
+      snd:(o.z in SOUNDS)?o.z:"auto",
       to:String(o.t||"").slice(0,60), msg:String(o.m||"").slice(0,500), from:String(o.s||"").slice(0,60),
     };
   }catch(err){ return null; }
@@ -803,6 +806,34 @@ const Snd=(function(){
     g.gain.exponentialRampToValueAtTime(.001,when+.07);
     o.start(when); o.stop(when+.09);
   }
+  function thunderCrack(big,into){
+    const t=ctx.currentTime;
+    const s=ctx.createBufferSource(); s.buffer=noiseBuf();
+    const lp=ctx.createBiquadFilter(); lp.type="lowpass";
+    lp.frequency.setValueAtTime(big?1000:420,t);
+    lp.frequency.exponentialRampToValueAtTime(70,t+(big?1.6:.9));
+    const g=ctx.createGain();
+    s.connect(lp); lp.connect(g); g.connect(master);
+    const peak=big?.48:.24;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(peak,t+.03);
+    g.gain.exponentialRampToValueAtTime(.001,t+(big?2.3:1.15));
+    s.start(t); s.stop(t+(big?2.4:1.2));
+    if(into){ into.push(s,lp,g); }
+  }
+  function bowlChime(into){
+    const t=ctx.currentTime;
+    const o=ctx.createOscillator(); o.type="sine"; o.frequency.value=523.25;
+    const o2=ctx.createOscillator(); o2.type="sine"; o2.frequency.value=523.25*2.76;
+    const g=ctx.createGain(); g.gain.value=0;
+    const g2=ctx.createGain(); g2.gain.value=0;
+    o.connect(g); g.connect(master); o2.connect(g2); g2.connect(master);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.05,t+.06);
+    g.gain.exponentialRampToValueAtTime(.0008,t+4.6);
+    g2.gain.setValueAtTime(0,t); g2.gain.linearRampToValueAtTime(.014,t+.06);
+    g2.gain.exponentialRampToValueAtTime(.0006,t+3.2);
+    o.start(t); o.stop(t+4.7); o2.start(t); o2.stop(t+3.3);
+    if(into){ into.push(o,o2,g,g2); }
+  }
   /* --- ambience --- */
   function startAmb(kind){
     if(!ensure()||!kind) return;
@@ -845,6 +876,36 @@ const Snd=(function(){
           o.start(st); o.stop(st+.2);
         }
       },2600));
+    }else if(kind==="storm"){
+      const s=noiseSrc();
+      const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=1700;
+      const g=ctx.createGain(); g.gain.value=0;
+      s.connect(lp); lp.connect(g); g.connect(master);
+      g.gain.linearRampToValueAtTime(.07,ctx.currentTime+1.5);
+      s.start(); amb.nodes.push(s,lp,g);
+      const scheduleCrack=()=>{
+        thunderCrack(Math.random()<.4, amb.nodes);
+        amb.timers.push(setTimeout(scheduleCrack, 5000+Math.random()*9000));
+      };
+      amb.timers.push(setTimeout(scheduleCrack, 1800+Math.random()*2000));
+    }else if(kind==="meditation"){
+      const t=ctx.currentTime;
+      const o1=ctx.createOscillator(); o1.type="sine"; o1.frequency.value=110;
+      const o2=ctx.createOscillator(); o2.type="sine"; o2.frequency.value=110*1.5;
+      const lp=ctx.createBiquadFilter(); lp.type="lowpass"; lp.frequency.value=800;
+      const g=ctx.createGain(); g.gain.value=0;
+      const lfo=ctx.createOscillator(); lfo.frequency.value=.05;
+      const lfoG=ctx.createGain(); lfoG.gain.value=.01;
+      lfo.connect(lfoG); lfoG.connect(g.gain);
+      o1.connect(lp); o2.connect(lp); lp.connect(g); g.connect(master);
+      g.gain.linearRampToValueAtTime(.045,t+3);
+      o1.start(t); o2.start(t); lfo.start(t);
+      amb.nodes.push(o1,o2,lp,g,lfo);
+      const scheduleChime=()=>{
+        bowlChime(amb.nodes);
+        amb.timers.push(setTimeout(scheduleChime, 7000+Math.random()*3000));
+      };
+      amb.timers.push(setTimeout(scheduleChime, 900));
     }
   }
   function stopAmb(){ if(ctx) stopSet(amb); }
@@ -1102,6 +1163,21 @@ function renderAllTrays(){
       const at=state.extras.indexOf(id);
       if(at>=0) state.extras.splice(at,1); else state.extras.push(id);
     });
+  fillTray("#sec-sound", Object.entries(SOUNDS).map(([id,d])=>[id,d,iconThumb(d.icon)]),
+    id=>(state.snd||"auto")===id,
+    id=>{ state.snd=id; previewSound(); });
+}
+
+let previewTimer=null;
+function previewSound(){
+  const kind=ambienceFor(state);
+  Snd.ensure();
+  Snd.stopAmb();
+  clearTimeout(previewTimer);
+  if(kind){
+    Snd.startAmb(kind);
+    previewTimer=setTimeout(()=>Snd.stopAmb(),8000);
+  }
 }
 
 function randomize(){
@@ -1129,6 +1205,7 @@ function initEditor(){
   attachInteractions($("#previewCard"), true);
   $("#btnRandom").addEventListener("click",randomize);
   $("#btnShare").addEventListener("click",()=>{
+    clearTimeout(previewTimer); Snd.stopAmb();
     const url=buildShareUrl();
     $("#shareUrl").value=url;
     $("#btnPreview").href=url;
@@ -1148,13 +1225,27 @@ function initEditor(){
 }
 
 /* ============ viewer ============ */
+const SOUNDS = {
+  auto:{ name:"Match the scene", icon:"✦" },
+  none:{ name:"Silent", icon:"🔇" },
+  rain:{ name:"Rain", icon:"🌧️" },
+  storm:{ name:"Thunderstorm", icon:"⛈️" },
+  wind:{ name:"Wind", icon:"🍃" },
+  crickets:{ name:"Crickets", icon:"🦗" },
+  birdsong:{ name:"Birds chirping", icon:"🐦" },
+  meditation:{ name:"Meditation", icon:"🧘" },
+};
 function ambienceFor(st){
-  if(st.weather==="rain") return "rain";
-  if(st.weather==="snow") return "wind";
-  if(st.weather==="fireflies") return "crickets";
-  if(st.weather==="birds") return "birdsong";
-  if(st.view==="starry") return "crickets";
-  return null;
+  const snd=st.snd||"auto";
+  if(snd==="auto"){
+    if(st.weather==="rain") return "rain";
+    if(st.weather==="snow") return "wind";
+    if(st.weather==="fireflies") return "crickets";
+    if(st.weather==="birds") return "birdsong";
+    if(st.view==="starry"||st.view==="aurora") return "crickets";
+    return null;
+  }
+  return (snd==="none")?null:snd;
 }
 function animateDoodle(sceneEl, baseDelay){
   const mains=[...sceneEl.querySelectorAll(".doodleMain")];
