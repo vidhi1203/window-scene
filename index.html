@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wish you were here · make a window</title>
+<meta name="description" content="Compose a little window scene and send it to someone you miss.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="someone made you a window ✳">
+<meta property="og:description" content="a little view, some clutter on the sill, and a note — tap to draw the curtains.">
+<meta property="og:image" content="https://vidhi1203.github.io/window-scene/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://vidhi1203.github.io/window-scene/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="someone made you a window ✳">
+<meta name="twitter:description" content="a little view, some clutter on the sill, and a note — tap to draw the curtains.">
+<meta name="twitter:image" content="https://vidhi1203.github.io/window-scene/og-image.png">
+<meta name="theme-color" content="#faf4e8">
+<style>
+  :root{
+    --cream:#faf4e8;
+    --ink:#3d3428;
+    --ink-soft:#6f6353;
+    --accent:#c4654a;
+    --accent-soft:#f3ddd2;
+    --card:#fffdf7;
+    --line:#e7dcc8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    min-height:100vh;
+    background-image:radial-gradient(#efe5d2 1px, transparent 1px);
+    background-size:26px 26px;
+  }
+  header{ text-align:center; padding:34px 16px 10px; }
+  header .eyebrow{
+    font-family:ui-sans-serif,system-ui,sans-serif;
+    font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  header h1{ font-size:clamp(28px,5vw,42px); font-weight:600; font-style:italic; margin-top:6px; }
+  header p.sub{ color:var(--ink-soft); margin-top:8px; font-size:15px; }
+
+  main{ max-width:1060px; margin:0 auto; padding:18px 16px 80px; }
+
+  /* ---------- editor layout ---------- */
+  .studio{ display:grid; grid-template-columns:minmax(300px,430px) 1fr; gap:28px; align-items:start; }
+  @media (max-width:860px){ .studio{ grid-template-columns:1fr; } .previewWrap{position:static !important} }
+  .previewWrap{ position:sticky; top:16px; }
+  .windowCard{
+    background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:18px; box-shadow:0 10px 30px rgba(90,70,40,.10);
+  }
+  .windowCard svg{ width:100%; height:auto; display:block; }
+
+  .panel{ display:flex; flex-direction:column; gap:26px; }
+  section.opt h2{
+    font-size:15px; font-weight:600; letter-spacing:.02em; margin-bottom:10px;
+    display:flex; align-items:baseline; gap:8px;
+  }
+  section.opt h2 .hint{ font-family:ui-sans-serif,system-ui,sans-serif; font-size:11px; color:var(--ink-soft); font-weight:400; }
+  .tray{
+    display:flex; gap:10px; overflow-x:auto; padding:4px 2px 10px;
+    scrollbar-width:thin;
+  }
+  .tray::-webkit-scrollbar{height:6px}
+  .tray::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+  .swatch{
+    flex:0 0 auto; width:84px; cursor:pointer; border:2px solid var(--line);
+    border-radius:14px; background:var(--card); padding:8px 6px 7px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    transition:transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+    font:inherit; color:inherit;
+  }
+  .swatch:hover{ transform:translateY(-2px); }
+  .swatch.sel{ border-color:var(--accent); box-shadow:0 4px 14px rgba(196,101,74,.22); background:#fff; }
+  .swatch .thumb{ width:62px; height:62px; border-radius:9px; overflow:hidden; display:flex; align-items:center; justify-content:center; background:#f4ecdd; }
+  .swatch .thumb svg{ width:100%; height:100%; display:block; }
+  .swatch .lbl{ font-size:11px; font-family:ui-sans-serif,system-ui,sans-serif; color:var(--ink-soft); text-align:center; line-height:1.25; }
+  .swatch.sel .lbl{ color:var(--accent); font-weight:600; }
+  .swatch .big{ font-size:26px; line-height:62px; }
+
+  /* note form */
+  .noteCard{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .noteCard label{ font-size:12px; font-family:ui-sans-serif,system-ui,sans-serif; color:var(--ink-soft); letter-spacing:.06em; text-transform:uppercase; }
+  .noteCard input,.noteCard textarea{
+    font:inherit; font-size:15px; color:var(--ink); background:#fffef9;
+    border:1px solid var(--line); border-radius:10px; padding:10px 12px; width:100%;
+  }
+  .noteCard textarea{ min-height:90px; resize:vertical; }
+  .noteCard input:focus,.noteCard textarea:focus{ outline:2px solid var(--accent-soft); border-color:var(--accent); }
+
+  .actions{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  button.primary{
+    font:inherit; font-size:16px; cursor:pointer; border:none; border-radius:999px;
+    background:var(--accent); color:#fff; padding:13px 26px; font-weight:600;
+    box-shadow:0 6px 18px rgba(196,101,74,.35); transition:transform .12s ease;
+  }
+  button.primary:hover{ transform:translateY(-2px); }
+  button.ghost{
+    font:inherit; font-size:14px; cursor:pointer; border:1px solid var(--line);
+    border-radius:999px; background:var(--card); color:var(--ink); padding:10px 18px;
+  }
+  .shareBox{
+    display:none; background:var(--card); border:1px dashed var(--accent);
+    border-radius:14px; padding:14px; flex-direction:column; gap:10px;
+  }
+  .shareBox.show{ display:flex; }
+  .shareBox .row{ display:flex; gap:8px; }
+  .shareBox input{ flex:1; font-size:13px; font-family:ui-monospace,Menlo,monospace; border:1px solid var(--line); border-radius:8px; padding:9px 10px; color:var(--ink-soft); background:#fffef9; min-width:0; }
+  .shareBox .note{ font-size:12px; font-family:ui-sans-serif,system-ui,sans-serif; color:var(--ink-soft); }
+
+  footer{ text-align:center; padding:30px 16px 40px; color:var(--ink-soft); font-size:13px; }
+  footer a{ color:var(--accent); }
+
+  /* ---------- viewer ---------- */
+  #viewer{ display:none; }
+  body.viewing #editorPage{ display:none }
+  body.viewing #viewer{ display:block }
+  .viewerStage{ max-width:540px; margin:0 auto; text-align:center; }
+  .viewerStage .windowCard{ position:relative; }
+  #curtainHint{
+    position:absolute; inset:0; display:flex; align-items:flex-end; justify-content:center;
+    padding-bottom:12%; pointer-events:none; transition:opacity .6s ease;
+  }
+  #curtainHint span{
+    background:rgba(40,25,20,.72); color:#f7e9d7; font-size:14px;
+    padding:9px 18px; border-radius:999px; letter-spacing:.04em;
+    font-family:ui-sans-serif,system-ui,sans-serif;
+  }
+  #viewerScene{ cursor:pointer; }
+  #viewerScene.open{ cursor:default; }
+  .msgCard{
+    opacity:0; transform:translateY(14px); transition:opacity 1.2s ease, transform 1.2s ease;
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:24px 26px; margin-top:20px; text-align:left;
+    box-shadow:0 10px 30px rgba(90,70,40,.10);
+  }
+  .msgCard.show{ opacity:1; transform:none; }
+  .msgCard .to{ font-size:14px; color:var(--ink-soft); font-family:ui-sans-serif,system-ui,sans-serif; letter-spacing:.05em; }
+  .msgCard .msg{
+    margin:12px 0; font-size:21px; line-height:1.55; font-style:italic; white-space:pre-wrap;
+  }
+  .msgCard .from{ text-align:right; font-size:15px; color:var(--ink-soft); }
+  .makeOwn{ margin-top:24px; opacity:0; transition:opacity 1s ease .4s; }
+  .makeOwn.show{ opacity:1; }
+  .makeOwn a{ color:var(--accent); font-size:15px; text-decoration:none; border-bottom:1px solid var(--accent-soft); }
+
+  /* ---------- svg scene animation ---------- */
+  .cloud{ animation:drift 11s ease-in-out infinite alternate; }
+  .cloud.c2{ animation-duration:15s; animation-delay:-6s; }
+  @keyframes drift{ from{transform:translateX(0)} to{transform:translateX(24px)} }
+  .bob{ animation:bob 4.5s ease-in-out infinite; }
+  @keyframes bob{ 0%,100%{transform:translateY(0) rotate(0deg)} 50%{transform:translateY(-4px) rotate(-2deg)} }
+  .rainG{ animation:fall 1.05s linear infinite; }
+  .snowG{ animation:fall 8s linear infinite; }
+  @keyframes fall{ from{transform:translateY(0)} to{transform:translateY(364px)} }
+  .tw{ animation:twinkle 2.6s ease-in-out infinite; }
+  @keyframes twinkle{ 0%,100%{opacity:1} 50%{opacity:.15} }
+  .fly{ animation:twinkle 3.4s ease-in-out infinite; }
+  .birds{ animation:birdDrift 26s ease-in-out infinite alternate; }
+  @keyframes birdDrift{ from{transform:translateX(-18px)} to{transform:translateX(30px)} }
+  .flame{ transform-box:fill-box; transform-origin:bottom center; animation:flick 1.4s ease-in-out infinite alternate; }
+  @keyframes flick{ from{transform:scale(1) rotate(-2deg)} to{transform:scale(1.15,1.28) rotate(2deg)} }
+  .steam{ animation:steamup 3s ease-in-out infinite; }
+  @keyframes steamup{ 0%{opacity:0; transform:translateY(3px)} 40%{opacity:.7} 100%{opacity:0; transform:translateY(-9px)} }
+  .sway{ transform-box:fill-box; transform-origin:top center; animation:swing 5.5s ease-in-out infinite alternate; }
+  @keyframes swing{ from{transform:rotate(-3.5deg)} to{transform:rotate(3.5deg)} }
+  .sunGlow{ animation:glowp 5s ease-in-out infinite alternate; }
+  @keyframes glowp{ from{opacity:.35} to{opacity:.7} }
+
+  /* reveal curtains */
+  .cpanelL,.cpanelR{ transition:transform 2.3s cubic-bezier(.65,0,.3,1); }
+  #viewerScene.open .cpanelL{ transform:translateX(-318px); }
+  #viewerScene.open .cpanelR{ transform:translateX(318px); }
+  .revealGrp{ transition:opacity .5s ease 2.2s; }
+  #viewerScene.open .revealGrp{ opacity:0; pointer-events:none; }
+  @media (prefers-reduced-motion:reduce){
+    .cloud,.bob,.rainG,.snowG,.tw,.fly,.birds,.flame,.steam,.sway,.sunGlow{ animation:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="editorPage">
+  <header>
+    <div class="eyebrow">a little something to send</div>
+    <h1>wish you were here</h1>
+    <p class="sub">Compose a window — the view, the weather, the clutter on the sill — and send it to someone you miss.</p>
+  </header>
+
+  <main>
+    <div class="studio">
+      <div class="previewWrap">
+        <div class="windowCard" id="previewCard"></div>
+      </div>
+
+      <div class="panel">
+        <section class="opt" id="sec-view"><h2>The view <span class="hint">what's out there</span></h2><div class="tray"></div></section>
+        <section class="opt" id="sec-weather"><h2>The weather <span class="hint">optional</span></h2><div class="tray"></div></section>
+        <section class="opt" id="sec-frame"><h2>The frame</h2><div class="tray"></div></section>
+        <section class="opt" id="sec-curtain"><h2>Curtains</h2><div class="tray"></div></section>
+        <section class="opt" id="sec-items"><h2>On the sill <span class="hint">tap to add · up to 5</span></h2><div class="tray"></div></section>
+        <section class="opt" id="sec-extras"><h2>Hanging up <span class="hint">tap to toggle</span></h2><div class="tray"></div></section>
+
+        <section class="opt">
+          <h2>Your note</h2>
+          <div class="noteCard">
+            <div><label for="inTo">To</label><input id="inTo" maxlength="40" placeholder="dear you…"></div>
+            <div><label for="inMsg">Message</label><textarea id="inMsg" maxlength="400" placeholder="wish we were here, watching this together."></textarea></div>
+            <div><label for="inFrom">From</label><input id="inFrom" maxlength="40" placeholder="someone thinking of you"></div>
+          </div>
+        </section>
+
+        <div class="actions">
+          <button class="primary" id="btnShare">Create the link 💌</button>
+          <button class="ghost" id="btnRandom">Surprise me ✦</button>
+        </div>
+
+        <div class="shareBox" id="shareBox">
+          <div class="note">Your window is folded into this link — anyone who opens it will see exactly what you made. Nothing is stored anywhere else.</div>
+          <div class="row">
+            <input id="shareUrl" readonly>
+            <button class="ghost" id="btnCopy">Copy</button>
+          </div>
+          <div class="row">
+            <a id="btnPreview" target="_blank" rel="noopener"><button class="ghost">Open a preview ↗</button></a>
+            <button class="ghost" id="btnNative" style="display:none">Share…</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="viewer">
+  <header>
+    <div class="eyebrow">someone made this for you</div>
+    <h1>a window, from afar</h1>
+  </header>
+  <main>
+    <div class="viewerStage">
+      <div class="windowCard">
+        <div id="viewerScene"></div>
+        <div id="curtainHint"><span>tap to draw the curtains ✧</span></div>
+      </div>
+      <div class="msgCard" id="msgCard">
+        <div class="to" id="vTo"></div>
+        <div class="msg" id="vMsg"></div>
+        <div class="from" id="vFrom"></div>
+      </div>
+      <div class="makeOwn" id="makeOwn"><a href="#" id="makeOwnLink">✳ make a window of your own</a></div>
+    </div>
+  </main>
+</div>
+
+<footer>made with a little longing · <span id="footYear"></span></footer>
+
+<script>
+"use strict";
+
+/* ============ deterministic randomness (scenes look identical for sender & receiver) ============ */
+function rng(seed){
+  return function(){
+    seed|=0; seed=seed+0x6D2B79F5|0;
+    let t=Math.imul(seed^seed>>>15,1|seed);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+
+/* ============ the view: x 60..360, y 56..420 (w300 h364) ============ */
+const VX=60, VY=56, VW=300, VH=364, VB=VY+VH; // VB=420 bottom
+
+const VIEWS = {
+  meadow:{ name:"Sunny meadow", draw(){ return `
+    <defs><linearGradient id="gMeadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a5ddf7"/><stop offset="1" stop-color="#e9f7fd"/></linearGradient></defs>
+    <rect x="${VX}" y="${VY}" width="${VW}" height="${VH}" fill="url(#gMeadow)"/>
+    <circle cx="308" cy="118" r="42" fill="#ffdd7a" opacity=".45" class="sunGlow"/>
+    <circle cx="308" cy="118" r="25" fill="#ffd257"/>
+    <g class="cloud" fill="#ffffff" opacity=".92">
+      <ellipse cx="140" cy="112" rx="34" ry="13"/><ellipse cx="164" cy="103" rx="24" ry="11"/><ellipse cx="118" cy="105" rx="18" ry="9"/></g>
+    <g class="cloud c2" fill="#ffffff" opacity=".75">
+      <ellipse cx="250" cy="170" rx="26" ry="10"/><ellipse cx="268" cy="163" rx="16" ry="8"/></g>
+    <path d="M${VX} 330 Q150 292 225 322 T${VX+VW} 312 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#8cc177"/>
+    <path d="M${VX} 362 Q165 334 255 364 T${VX+VW} 356 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#6cae5b"/>
+    ${(()=>{let r=rng(7),s="";for(let i=0;i<14;i++){const x=VX+12+r()*(VW-24),y=368+r()*44,c=["#f28cb8","#fff2b8","#f9f9f9","#e97070"][Math.floor(r()*4)];s+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.6" fill="${c}"/><line x1="${x.toFixed(1)}" y1="${(y+2).toFixed(1)}" x2="${x.toFixed(1)}" y2="${(y+7).toFixed(1)}" stroke="#4c8a44" stroke-width="1.2"/>`;}return s;})()}
+  `;}},
+  ocean:{ name:"Ocean sunset", draw(){ return `
+    <defs>
+      <linearGradient id="gOceanSky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e26a63"/><stop offset=".55" stop-color="#ff9d6e"/><stop offset="1" stop-color="#ffd9a0"/></linearGradient>
+      <linearGradient id="gOceanSea" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#4a86ad"/><stop offset="1" stop-color="#295f88"/></linearGradient>
+    </defs>
+    <rect x="${VX}" y="${VY}" width="${VW}" height="250" fill="url(#gOceanSky)"/>
+    <circle cx="210" cy="300" r="44" fill="#ffe9b8" opacity=".5" class="sunGlow"/>
+    <circle cx="210" cy="300" r="28" fill="#fff3cd"/>
+    <rect x="${VX}" y="306" width="${VW}" height="${VB-306}" fill="url(#gOceanSea)"/>
+    ${(()=>{let r=rng(21),s="";for(let i=0;i<9;i++){const y=316+r()*90,x=VX+10+r()*(VW-70),w=22+r()*40;s+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x+w).toFixed(1)}" y2="${y.toFixed(1)}" stroke="#ffe9b8" stroke-width="2" opacity="${(0.18+r()*0.3).toFixed(2)}" stroke-linecap="round"/>`;}return s;})()}
+    <g class="bob">
+      <path d="M266 344 L306 344 L296 354 L276 354 Z" fill="#7c4a33"/>
+      <line x1="286" y1="344" x2="286" y2="312" stroke="#5d3826" stroke-width="2.5"/>
+      <path d="M288 313 L310 340 L288 340 Z" fill="#fff6e8"/>
+      <path d="M284 316 L268 340 L284 340 Z" fill="#f7e3c8"/>
+    </g>
+  `;}},
+  city:{ name:"City at night", draw(){ return `
+    <defs><linearGradient id="gCity" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#141f3d"/><stop offset="1" stop-color="#31456e"/></linearGradient></defs>
+    <rect x="${VX}" y="${VY}" width="${VW}" height="${VH}" fill="url(#gCity)"/>
+    <circle cx="300" cy="112" r="30" fill="#f4ecd2" opacity=".22" class="sunGlow"/>
+    <circle cx="300" cy="112" r="19" fill="#f4ecd2"/>
+    <circle cx="294" cy="106" r="3.4" fill="#e3d8b8"/><circle cx="306" cy="118" r="2.4" fill="#e3d8b8"/>
+    ${(()=>{let r=rng(33),s="";for(let i=0;i<16;i++){s+=`<circle class="tw" style="animation-delay:${(r()*3).toFixed(1)}s" cx="${(VX+8+r()*(VW-16)).toFixed(1)}" cy="${(VY+8+r()*140).toFixed(1)}" r="${(0.8+r()*1.1).toFixed(1)}" fill="#f3ecd2"/>`;}return s;})()}
+    ${(()=>{let r=rng(5),s="";let x=VX-6;while(x<VX+VW){const w=26+r()*30,h=90+r()*120;s+=`<rect x="${x.toFixed(1)}" y="${(VB-h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#0f1a33"/>`;x+=w+2;}return s;})()}
+    ${(()=>{let r=rng(9),s="";let x=VX-10;while(x<VX+VW){const w=32+r()*36,h=50+r()*90,bx=x,by=VB-h;s+=`<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#0a1226"/>`;
+      for(let wy=by+8;wy<VB-10;wy+=14){for(let wx=bx+5;wx<bx+w-7;wx+=11){if(r()<0.42)s+=`<rect x="${wx.toFixed(1)}" y="${wy.toFixed(1)}" width="5" height="7" fill="#ffd97a" opacity="${(0.55+r()*0.45).toFixed(2)}"/>`;}}
+      x+=w+3;}return s;})()}
+  `;}},
+  mountains:{ name:"Snowy mountains", draw(){ return `
+    <defs><linearGradient id="gMount" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe0ef"/><stop offset="1" stop-color="#f4f9fc"/></linearGradient></defs>
+    <rect x="${VX}" y="${VY}" width="${VW}" height="${VH}" fill="url(#gMount)"/>
+    <path d="M${VX} 320 L130 190 L200 305 L262 175 L${VX+VW} 300 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#a9bdd6"/>
+    <path d="M112 213 L130 190 L149 214 Q140 224 130 216 Q120 226 112 213 Z" fill="#ffffff"/>
+    <path d="M243 199 L262 175 L282 202 Q272 212 262 203 Q252 214 243 199 Z" fill="#ffffff"/>
+    <path d="M${VX} 352 L112 268 L188 350 L252 282 L${VX+VW} 348 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#8ba3c4"/>
+    <path d="M97 286 L112 268 L128 288 Q120 296 112 290 Q104 297 97 286 Z" fill="#ffffff"/>
+    <rect x="${VX}" y="378" width="${VW}" height="${VB-378}" fill="#eef4f8"/>
+    ${(()=>{let r=rng(13),s="";for(let i=0;i<11;i++){const x=VX+10+r()*(VW-20),y=372+r()*34,h=16+r()*14;s+=`<path d="M${x.toFixed(1)} ${(y-h).toFixed(1)} L${(x-6).toFixed(1)} ${y.toFixed(1)} L${(x+6).toFixed(1)} ${y.toFixed(1)} Z" fill="${r()<0.5?"#3a6148":"#2c4f3a"}"/><rect x="${(x-1.4).toFixed(1)}" y="${y.toFixed(1)}" width="2.8" height="4" fill="#5d4433"/>`;}return s;})()}
+  `;}},
+  rainyhills:{ name:"Grey rainy hills", draw(){ return `
+    <defs><linearGradient id="gRain" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a6b2bb"/><stop offset="1" stop-color="#dde3e8"/></linearGradient></defs>
+    <rect x="${VX}" y="${VY}" width="${VW}" height="${VH}" fill="url(#gRain)"/>
+    <g class="cloud" fill="#8d9aa4" opacity=".9">
+      <ellipse cx="150" cy="105" rx="42" ry="15"/><ellipse cx="182" cy="94" rx="28" ry="13"/><ellipse cx="122" cy="97" rx="22" ry="11"/></g>
+    <g class="cloud c2" fill="#98a5ae" opacity=".8">
+      <ellipse cx="278" cy="140" rx="34" ry="12"/><ellipse cx="300" cy="131" rx="20" ry="10"/></g>
+    <path d="M${VX} 322 Q160 282 240 318 T${VX+VW} 308 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#7f9678"/>
+    <path d="M${VX} 360 Q170 330 260 362 T${VX+VW} 352 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#647f60"/>
+    <g>
+      <rect x="150" y="306" width="34" height="26" fill="#c9b8a3"/>
+      <path d="M146 306 L167 288 L188 306 Z" fill="#8a6f5f"/>
+      <rect x="160" y="314" width="9" height="10" fill="#ffd97a"/>
+      <rect x="176" y="292" width="5" height="10" fill="#7d6355"/>
+    </g>
+  `;}},
+  starry:{ name:"Starry night", draw(){ return `
+    <defs><linearGradient id="gStar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1330"/><stop offset="1" stop-color="#1d2c57"/></linearGradient></defs>
+    <rect x="${VX}" y="${VY}" width="${VW}" height="${VH}" fill="url(#gStar)"/>
+    ${(()=>{let r=rng(17),s="";for(let i=0;i<38;i++){s+=`<circle class="tw" style="animation-delay:${(r()*3.5).toFixed(1)}s;animation-duration:${(1.8+r()*2.4).toFixed(1)}s" cx="${(VX+6+r()*(VW-12)).toFixed(1)}" cy="${(VY+6+r()*250).toFixed(1)}" r="${(0.7+r()*1.4).toFixed(1)}" fill="#f5eecf"/>`;}return s;})()}
+    <circle cx="132" cy="122" r="26" fill="#f6edd6"/>
+    <circle cx="143" cy="114" r="24" fill="#0d1737"/>
+    <path d="M${VX} 356 Q150 322 235 352 T${VX+VW} 344 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#0c1430"/>
+    <path d="M${VX} 384 Q180 358 ${VX+VW} 380 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#070d20"/>
+  `;}},
+};
+
+/* ============ weather (clipped to view) ============ */
+function rainLines(){
+  let r=rng(41), s="";
+  for(let i=0;i<26;i++){
+    const x=VX+r()*VW, y=VY+r()*VH;
+    s+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x-5).toFixed(1)}" y2="${(y+13).toFixed(1)}" stroke="#c4d6e6" stroke-width="2" stroke-linecap="round" opacity=".65"/>`;
+  }
+  return s;
+}
+function snowDots(){
+  let r=rng(55), s="";
+  for(let i=0;i<24;i++){
+    s+=`<circle cx="${(VX+r()*VW).toFixed(1)}" cy="${(VY+r()*VH).toFixed(1)}" r="${(1.6+r()*1.8).toFixed(1)}" fill="#ffffff" opacity="${(0.65+r()*0.35).toFixed(2)}"/>`;
+  }
+  return s;
+}
+const WEATHER = {
+  none:{ name:"Clear", icon:"☀️", draw(){return "";} },
+  rain:{ name:"Rain", icon:"🌧", draw(){ const L=rainLines(); return `<g class="rainG"><g>${L}</g><g transform="translate(0,-${VH})">${L}</g></g>`; }},
+  snow:{ name:"Snow", icon:"❄️", draw(){ const L=snowDots(); return `<g class="snowG"><g>${L}</g><g transform="translate(0,-${VH})">${L}</g></g>`; }},
+  birds:{ name:"Birds", icon:"🕊", draw(){ return `
+    <g class="birds" stroke="#3d3a35" stroke-width="2" fill="none" stroke-linecap="round">
+      <path d="M150 128 q5 -7 10 0 q5 -7 10 0"/>
+      <path d="M196 108 q4 -6 8 0 q4 -6 8 0"/>
+      <path d="M232 140 q4 -5 7 0 q4 -5 7 0"/>
+    </g>`; }},
+  fireflies:{ name:"Fireflies", icon:"✨", draw(){
+    let r=rng(63), s="";
+    for(let i=0;i<10;i++){
+      s+=`<circle class="fly" style="animation-delay:${(r()*3).toFixed(1)}s" cx="${(VX+15+r()*(VW-30)).toFixed(1)}" cy="${(200+r()*190).toFixed(1)}" r="2.2" fill="#ffe66d"/>`;
+    }
+    return `<g>${s}</g>`;
+  }},
+};
+
+/* ============ frames ============ */
+const FRAMES = {
+  classic:{ name:"Classic white", color:"#f6f1e7", sill:"#e4dccb", bars:[["v",210],["h",177],["h",298]] },
+  wood:{ name:"Warm wood", color:"#b07a52", sill:"#96633f", bars:[["v",210],["h",238]] },
+  noir:{ name:"Modern noir", color:"#33322f", sill:"#262521", bars:[] },
+  sage:{ name:"Sage cottage", color:"#a9bfa0", sill:"#8ca682", bars:[["v",210]] },
+};
+function drawFrame(f){
+  let bars="";
+  for(const [dir,pos] of f.bars){
+    if(dir==="v") bars+=`<rect x="${pos-4.5}" y="${VY}" width="9" height="${VH}" fill="${f.color}"/>`;
+    else bars+=`<rect x="${VX}" y="${pos-4.5}" width="${VW}" height="9" fill="${f.color}"/>`;
+  }
+  return `
+    <path d="M46 42 H374 V434 H46 Z M${VX} ${VY} H${VX+VW} V${VB} H${VX} Z" fill-rule="evenodd" fill="${f.color}"/>
+    <path d="M46 42 H374 V434 H46 Z M${VX} ${VY} H${VX+VW} V${VB} H${VX} Z" fill-rule="evenodd" fill="none" stroke="rgba(60,40,20,.14)" stroke-width="1"/>
+    ${bars}
+    <rect x="28" y="430" width="364" height="15" rx="3" fill="${f.sill}"/>
+    <rect x="28" y="443" width="364" height="4" rx="2" fill="rgba(50,35,20,.18)"/>
+  `;
+}
+
+/* ============ curtains ============ */
+function curtainPanels(fill, extra){
+  const left = `M${VX} ${VY} H132 C119 130 141 208 124 292 C116 348 134 388 126 414 L${VX} 414 Z`;
+  const folds = `<path d="M96 ${VY+8} C90 140 104 240 94 400" stroke="rgba(0,0,0,.10)" stroke-width="5" fill="none"/>
+                 <path d="M116 ${VY+8} C110 130 126 250 114 404" stroke="rgba(0,0,0,.08)" stroke-width="4" fill="none"/>`;
+  return `
+    <g>
+      <path d="${left}" fill="${fill}" ${extra||""}/>${folds}
+      <g transform="translate(420,0) scale(-1,1)"><path d="${left}" fill="${fill}" ${extra||""}/>${folds}</g>
+      <rect x="52" y="46" width="316" height="22" rx="9" fill="${fill}" ${extra||""}/>
+      <rect x="52" y="46" width="316" height="22" rx="9" fill="rgba(0,0,0,.06)"/>
+    </g>`;
+}
+const CURTAINS = {
+  none:{ name:"None", draw(){return "";}, chip:"#f4ecdd" },
+  linen:{ name:"Soft linen", chip:"#eaddc0", draw(){return curtainPanels("#eaddc0");} },
+  rose:{ name:"Dusty rose", chip:"#e2a9b6", draw(){return curtainPanels("#e2a9b6");} },
+  sky:{ name:"Powder blue", chip:"#aac9e6", draw(){return curtainPanels("#aac9e6");} },
+  lace:{ name:"Lace", chip:"#ffffff", draw(){return curtainPanels("#ffffff",'opacity=".62"');} },
+};
+
+/* ============ sill items (drawn with baseline at y=0, centered on x=0) ============ */
+const ITEMS = {
+  monstera:{ name:"Monstera", draw(){ return `
+    <path d="M-15 0 L15 0 L11 -20 L-11 -20 Z" fill="#c46f5a"/>
+    <rect x="-13" y="-25" width="26" height="6" rx="2" fill="#ad5b47"/>
+    <line x1="-4" y1="-25" x2="-11" y2="-44" stroke="#3c6e3f" stroke-width="2.4"/>
+    <line x1="2" y1="-25" x2="8" y2="-50" stroke="#3c6e3f" stroke-width="2.4"/>
+    <line x1="0" y1="-25" x2="-1" y2="-40" stroke="#3c6e3f" stroke-width="2"/>
+    <ellipse cx="-13" cy="-49" rx="9" ry="7" fill="#4c8a4f" transform="rotate(-20 -13 -49)"/>
+    <ellipse cx="9" cy="-55" rx="10" ry="7.5" fill="#57975a" transform="rotate(14 9 -55)"/>
+    <ellipse cx="-1" cy="-43" rx="7" ry="5.5" fill="#3f7d43"/>
+  `;}},
+  cactus:{ name:"Cactus", draw(){ return `
+    <path d="M-12 0 L12 0 L9 -16 L-9 -16 Z" fill="#d98e73"/>
+    <rect x="-10.5" y="-20" width="21" height="5" rx="2" fill="#c47a5e"/>
+    <rect x="-6" y="-48" width="12" height="29" rx="6" fill="#5f9e58"/>
+    <rect x="-17" y="-40" width="8" height="14" rx="4" fill="#5f9e58"/>
+    <rect x="-13" y="-31" width="8" height="6" rx="3" fill="#5f9e58"/>
+    <circle cx="0" cy="-49" r="3.4" fill="#e77fa3"/>
+  `;}},
+  cat:{ name:"Sleepy cat", draw(){ return `
+    <path d="M-19 -9 q-11 -3 -8 -15" stroke="#d98a4c" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="0" cy="-11" rx="20" ry="11.5" fill="#e8a55f"/>
+    <circle cx="13" cy="-23" r="9.5" fill="#e8a55f"/>
+    <path d="M6.5 -29 L8 -37 L13 -31 Z" fill="#e8a55f"/><path d="M18 -31 L21.5 -37 L22.5 -29 Z" fill="#e8a55f"/>
+    <path d="M8 -23 q2 2.4 4 0" stroke="#7a4a22" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <path d="M15 -23 q2 2.4 4 0" stroke="#7a4a22" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+    <path d="M-9 -18 q3 4 0 8 M-1 -20 q3 4.5 0 9" stroke="#d98a4c" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+  `;}},
+  mug:{ name:"Hot drink", draw(){ return `
+    <path class="steam" d="M-4 -26 q3 -5 0 -10" stroke="#b9b0a2" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path class="steam" style="animation-delay:1.2s" d="M4 -27 q-3 -5 0 -10" stroke="#b9b0a2" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <rect x="-11" y="-22" width="22" height="22" rx="4" fill="#bf6a58"/>
+    <path d="M11 -17 q9 3 0 11" stroke="#bf6a58" stroke-width="4" fill="none"/>
+    <ellipse cx="0" cy="-20" rx="9" ry="2.6" fill="#5c3a30"/>
+  `;}},
+  books:{ name:"Book stack", draw(){ return `
+    <rect x="-18" y="-8" width="36" height="8" rx="1.5" fill="#b45a5a"/>
+    <rect x="-16" y="-16" width="32" height="8" rx="1.5" fill="#5a7fb4" transform="rotate(-2 0 -12)"/>
+    <rect x="-14" y="-24" width="28" height="8" rx="1.5" fill="#c9a355" transform="rotate(2 0 -20)"/>
+    <line x1="-12" y1="-4" x2="12" y2="-4" stroke="rgba(255,255,255,.5)" stroke-width="1"/>
+  `;}},
+  flowers:{ name:"Vase of flowers", draw(){ return `
+    <line x1="-4" y1="-20" x2="-9" y2="-42" stroke="#4c8a44" stroke-width="2"/>
+    <line x1="0" y1="-20" x2="1" y2="-48" stroke="#4c8a44" stroke-width="2"/>
+    <line x1="4" y1="-20" x2="10" y2="-40" stroke="#4c8a44" stroke-width="2"/>
+    <circle cx="-9" cy="-45" r="5" fill="#e77fa3"/><circle cx="1" cy="-51" r="5.5" fill="#ffd166"/><circle cx="10" cy="-43" r="4.6" fill="#e56b6b"/>
+    <circle cx="-9" cy="-45" r="1.8" fill="#a3492f"/><circle cx="1" cy="-51" r="1.8" fill="#a3492f"/><circle cx="10" cy="-43" r="1.6" fill="#a3492f"/>
+    <path d="M-10 0 H10 L7 -14 Q12 -19 7 -22 H-7 Q-12 -19 -7 -14 Z" fill="#8fb3c7"/>
+  `;}},
+  candle:{ name:"Candle", draw(){ return `
+    <ellipse class="flame" cx="0" cy="-36" rx="3.4" ry="6" fill="#ffb84d"/>
+    <ellipse class="flame" cx="0" cy="-34.5" rx="1.7" ry="3.2" fill="#ffe08a"/>
+    <line x1="0" y1="-30" x2="0" y2="-33" stroke="#5c4a3a" stroke-width="1.4"/>
+    <rect x="-5.5" y="-30" width="11" height="27" rx="2.5" fill="#f3e2c7"/>
+    <path d="M-5.5 -30 q3 4 5.5 0 q3 4 5.5 0" fill="#f3e2c7" stroke="#e2cda9" stroke-width="1"/>
+    <ellipse cx="0" cy="-2" rx="10" ry="3" fill="#b99a68"/>
+  `;}},
+  radio:{ name:"Little radio", draw(){ return `
+    <line x1="12" y1="-26" x2="24" y2="-46" stroke="#4a4a4a" stroke-width="1.8" stroke-linecap="round"/>
+    <circle cx="24" cy="-46" r="1.8" fill="#4a4a4a"/>
+    <rect x="-20" y="-26" width="40" height="26" rx="5" fill="#5e8f8a"/>
+    <circle cx="-8" cy="-13" r="7" fill="#3e5f5b"/>
+    <line x1="-12" y1="-15" x2="-4" y2="-15" stroke="#5e8f8a" stroke-width="1.2"/>
+    <line x1="-12" y1="-11" x2="-4" y2="-11" stroke="#5e8f8a" stroke-width="1.2"/>
+    <circle cx="9" cy="-16" r="4.4" fill="#f2e6d0"/><circle cx="9" cy="-16" r="1.4" fill="#8a5a3a"/>
+    <circle cx="9" cy="-6.5" r="2.6" fill="#f2e6d0"/>
+  `;}},
+};
+
+/* ============ hanging extras ============ */
+const EXTRAS = {
+  lights:{ name:"String lights", icon:"💡", draw(){
+    const cols=["#ffd166","#ef8354","#7bc4a2","#e56b8c","#8fb8de"];
+    let s=`<path d="M${VX} 74 Q210 112 ${VX+VW} 74" stroke="#5a4a3a" stroke-width="1.8" fill="none"/>`;
+    for(let i=1;i<=9;i++){
+      const t=i/10, x=VX+VW*t, y=74+2*(112-74)*t*(1-t)*2; // quadratic bezier y approx
+      const yy=74+(112-74)*(1-Math.pow(2*t-1,2));
+      s+=`<line x1="${x.toFixed(1)}" y1="${yy.toFixed(1)}" x2="${x.toFixed(1)}" y2="${(yy+5).toFixed(1)}" stroke="#5a4a3a" stroke-width="1.4"/>
+          <circle class="tw" style="animation-delay:${(i*0.4).toFixed(1)}s;animation-duration:3.2s" cx="${x.toFixed(1)}" cy="${(yy+9).toFixed(1)}" r="4" fill="${cols[i%5]}"/>`;
+    }
+    return s;
+  }},
+  hangplant:{ name:"Hanging plant", icon:"🪴", draw(){ return `
+    <g class="sway">
+      <line x1="96" y1="${VY}" x2="96" y2="96" stroke="#8a7a62" stroke-width="1.6"/>
+      <path d="M80 96 H112 L107 114 H85 Z" fill="#b98a5f"/>
+      <path d="M84 96 q-8 22 -4 40" stroke="#4c8a44" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <path d="M96 100 q2 26 -3 46" stroke="#57975a" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <path d="M108 96 q9 20 5 38" stroke="#3f7d43" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <circle cx="80" cy="136" r="3" fill="#57975a"/><circle cx="93" cy="146" r="3" fill="#4c8a44"/><circle cx="113" cy="134" r="3" fill="#3f7d43"/>
+    </g>
+  `;}},
+  suncatcher:{ name:"Suncatcher", icon:"🔮", draw(){ return `
+    <g class="sway">
+      <line x1="322" y1="${VY}" x2="322" y2="98" stroke="#8a7a62" stroke-width="1.4"/>
+      <path d="M322 98 L334 116 L322 134 L310 116 Z" fill="#cfe6f5" opacity=".85" stroke="#ffffff" stroke-width="1.5"/>
+      <path d="M322 98 L334 116 L322 116 Z" fill="#f5c6da" opacity=".7"/>
+      <path d="M322 134 L310 116 L322 116 Z" fill="#fdebb6" opacity=".7"/>
+      <line x1="322" y1="134" x2="322" y2="144" stroke="#8a7a62" stroke-width="1.2"/>
+      <circle cx="322" cy="148" r="3.6" fill="#cfe6f5" stroke="#fff" stroke-width="1"/>
+    </g>
+  `;}},
+  stars:{ name:"Paper stars", icon:"⭐", draw(){
+    function star(x,len,sz,col){
+      const y=VY+len;
+      return `<g class="sway" style="animation-delay:${(x%7)/3}s">
+        <line x1="${x}" y1="${VY}" x2="${x}" y2="${y}" stroke="#8a7a62" stroke-width="1.2"/>
+        <path d="M${x} ${y} l${sz*0.32} ${sz*0.9} l${sz*0.95} 0 l-${sz*0.76} ${sz*0.58} l${sz*0.29} ${sz*0.9} l-${sz*0.8} -${sz*0.55} l-${sz*0.8} ${sz*0.55} l${sz*0.29} -${sz*0.9} l-${sz*0.76} -${sz*0.58} l${sz*0.95} 0 Z" fill="${col}" transform="translate(-0,0)"/>
+      </g>`;
+    }
+    return star(160,26,7,"#e8b64c")+star(210,44,8.5,"#dfa03c")+star(258,30,6.5,"#f0c96b");
+  }},
+};
+
+/* ============ state ============ */
+const MAX_ITEMS=5;
+let state={ view:"meadow", weather:"none", frame:"classic", curtain:"none", items:["monstera","cat"], extras:[], to:"", msg:"", from:"" };
+
+/* ============ scene assembly ============ */
+function itemSlots(n){
+  const xs=[], step=57, start=210-(n-1)*step/2;
+  for(let i=0;i<n;i++) xs.push(start+i*step);
+  return xs;
+}
+function drawScene(st, opts){
+  opts=opts||{};
+  const view=VIEWS[st.view]||VIEWS.meadow;
+  const weather=WEATHER[st.weather]||WEATHER.none;
+  const frame=FRAMES[st.frame]||FRAMES.classic;
+  const curtain=CURTAINS[st.curtain]||CURTAINS.none;
+  const xs=itemSlots(st.items.length);
+  let items="";
+  st.items.forEach((id,i)=>{
+    const it=ITEMS[id]; if(!it) return;
+    items+=`<g transform="translate(${xs[i]},431)">${it.draw()}</g>`;
+  });
+  let extras="";
+  for(const id of st.extras){ const ex=EXTRAS[id]; if(ex) extras+=ex.draw(); }
+
+  let reveal="";
+  if(opts.reveal){
+    reveal=`
+    <g class="revealGrp">
+      <clipPath id="revealClip"><rect x="42" y="38" width="336" height="400"/></clipPath>
+      <g clip-path="url(#revealClip)">
+        <g class="cpanelL">
+          <path d="M42 38 H216 C206 130 222 240 208 330 C202 380 214 410 208 438 L42 438 Z" fill="#7d3040"/>
+          <path d="M84 46 C76 160 92 300 80 430 M128 46 C120 150 138 300 124 430 M172 46 C164 160 182 300 168 430" stroke="rgba(0,0,0,.16)" stroke-width="7" fill="none"/>
+        </g>
+        <g class="cpanelR">
+          <path d="M378 38 H204 C214 130 198 240 212 330 C218 380 206 410 212 438 L378 438 Z" fill="#712a3a"/>
+          <path d="M336 46 C344 160 328 300 340 430 M292 46 C300 150 282 300 296 430 M248 46 C256 160 238 300 252 430" stroke="rgba(0,0,0,.16)" stroke-width="7" fill="none"/>
+        </g>
+      </g>
+      <rect x="36" y="30" width="348" height="16" rx="7" fill="#5c2230"/>
+      <circle cx="36" cy="38" r="7" fill="#4a1b26"/><circle cx="384" cy="38" r="7" fill="#4a1b26"/>
+    </g>`;
+  }
+
+  return `<svg viewBox="0 0 420 470" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="a window scene">
+    <defs><clipPath id="viewClip"><rect x="${VX}" y="${VY}" width="${VW}" height="${VH}"/></clipPath></defs>
+    <rect x="0" y="0" width="420" height="470" rx="10" fill="#f2e7d3"/>
+    <rect x="0" y="0" width="420" height="470" rx="10" fill="none" stroke="#e3d5ba" stroke-width="2"/>
+    <g clip-path="url(#viewClip)">${view.draw()}${weather.draw()}</g>
+    ${drawFrame(frame)}
+    ${extras}
+    ${items}
+    ${curtain.draw()}
+    ${reveal}
+  </svg>`;
+}
+
+/* ============ url encoding ============ */
+function encodeState(st){
+  const compact={ v:st.view,w:st.weather,f:st.frame,c:st.curtain,i:st.items,e:st.extras,t:st.to,m:st.msg,s:st.from };
+  const json=JSON.stringify(compact);
+  return btoa(unescape(encodeURIComponent(json))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function decodeState(hash){
+  try{
+    const b64=hash.replace(/-/g,"+").replace(/_/g,"/");
+    const o=JSON.parse(decodeURIComponent(escape(atob(b64))));
+    return {
+      view:(o.v in VIEWS)?o.v:"meadow",
+      weather:(o.w in WEATHER)?o.w:"none",
+      frame:(o.f in FRAMES)?o.f:"classic",
+      curtain:(o.c in CURTAINS)?o.c:"none",
+      items:Array.isArray(o.i)?o.i.filter(x=>x in ITEMS).slice(0,MAX_ITEMS):[],
+      extras:Array.isArray(o.e)?o.e.filter(x=>x in EXTRAS):[],
+      to:String(o.t||"").slice(0,60), msg:String(o.m||"").slice(0,500), from:String(o.s||"").slice(0,60),
+    };
+  }catch(err){ return null; }
+}
+
+/* ============ editor ui ============ */
+const $=s=>document.querySelector(s);
+
+function renderPreview(){ $("#previewCard").innerHTML=drawScene(state); }
+
+function makeSwatch(label, thumbHTML, selected, onClick){
+  const b=document.createElement("button");
+  b.type="button"; b.className="swatch"+(selected?" sel":"");
+  b.innerHTML=`<span class="thumb">${thumbHTML}</span><span class="lbl">${label}</span>`;
+  b.addEventListener("click",onClick);
+  return b;
+}
+function fillTray(sec, entries, isSel, onPick){
+  const tray=document.querySelector(sec+" .tray");
+  tray.innerHTML="";
+  for(const [id,def,thumb] of entries){
+    tray.appendChild(makeSwatch(def.name, thumb, isSel(id), ()=>{ onPick(id); renderAllTrays(); renderPreview(); }));
+  }
+}
+function itemThumb(id){ return `<svg viewBox="-27 -60 54 66">${ITEMS[id].draw()}</svg>`; }
+function viewThumb(id){ return `<svg viewBox="${VX} ${VY} ${VW} ${VH}" preserveAspectRatio="xMidYMid slice">${VIEWS[id].draw()}</svg>`; }
+function frameThumb(id){
+  const f=FRAMES[id];
+  return `<svg viewBox="0 0 60 60">
+    <rect x="6" y="6" width="48" height="48" fill="#dbeefc"/>
+    <path d="M6 6 H54 V54 H6 Z M14 14 H46 V46 H14 Z" fill-rule="evenodd" fill="${f.color}" stroke="rgba(60,40,20,.15)"/>
+    ${f.bars.length?`<rect x="28" y="14" width="4" height="32" fill="${f.color}"/>`:""}
+    ${f.bars.some(b=>b[0]==="h")?`<rect x="14" y="28" width="32" height="4" fill="${f.color}"/>`:""}
+  </svg>`;
+}
+function curtainThumb(id){
+  const c=CURTAINS[id];
+  if(id==="none") return `<svg viewBox="0 0 60 60"><rect x="8" y="8" width="44" height="44" rx="6" fill="#dbeefc"/><line x1="16" y1="44" x2="44" y2="16" stroke="#c9bda4" stroke-width="2"/></svg>`;
+  const op=id==="lace"?'opacity=".62"':"";
+  return `<svg viewBox="0 0 60 60"><rect x="8" y="8" width="44" height="44" rx="6" fill="#dbeefc"/>
+    <path d="M8 8 H26 C22 24 26 40 22 52 L8 52 Z" fill="${c.chip}" ${op}/>
+    <path d="M52 8 H34 C38 24 34 40 38 52 L52 52 Z" fill="${c.chip}" ${op}/>
+    <rect x="6" y="6" width="48" height="7" rx="3" fill="${c.chip}" ${op}/></svg>`;
+}
+function iconThumb(icon){ return `<span class="big">${icon}</span>`; }
+
+function renderAllTrays(){
+  fillTray("#sec-view", Object.entries(VIEWS).map(([id,d])=>[id,d,viewThumb(id)]),
+    id=>state.view===id, id=>{ state.view=id; });
+  fillTray("#sec-weather", Object.entries(WEATHER).map(([id,d])=>[id,d,iconThumb(d.icon)]),
+    id=>state.weather===id, id=>{ state.weather=id; });
+  fillTray("#sec-frame", Object.entries(FRAMES).map(([id,d])=>[id,d,frameThumb(id)]),
+    id=>state.frame===id, id=>{ state.frame=id; });
+  fillTray("#sec-curtain", Object.entries(CURTAINS).map(([id,d])=>[id,d,curtainThumb(id)]),
+    id=>state.curtain===id, id=>{ state.curtain=id; });
+  fillTray("#sec-items", Object.entries(ITEMS).map(([id,d])=>[id,d,itemThumb(id)]),
+    id=>state.items.includes(id),
+    id=>{
+      const at=state.items.indexOf(id);
+      if(at>=0) state.items.splice(at,1);
+      else if(state.items.length<MAX_ITEMS) state.items.push(id);
+    });
+  fillTray("#sec-extras", Object.entries(EXTRAS).map(([id,d])=>[id,d,iconThumb(d.icon)]),
+    id=>state.extras.includes(id),
+    id=>{
+      const at=state.extras.indexOf(id);
+      if(at>=0) state.extras.splice(at,1); else state.extras.push(id);
+    });
+}
+
+function randomize(){
+  const pick=o=>{ const k=Object.keys(o); return k[Math.floor(Math.random()*k.length)]; };
+  state.view=pick(VIEWS); state.weather=pick(WEATHER); state.frame=pick(FRAMES); state.curtain=pick(CURTAINS);
+  const ids=Object.keys(ITEMS).sort(()=>Math.random()-0.5);
+  state.items=ids.slice(0,2+Math.floor(Math.random()*3));
+  state.extras=Object.keys(EXTRAS).filter(()=>Math.random()<0.35);
+  renderAllTrays(); renderPreview();
+}
+
+function buildShareUrl(){
+  state.to=$("#inTo").value.trim();
+  state.msg=$("#inMsg").value.trim();
+  state.from=$("#inFrom").value.trim();
+  const base=location.origin==="null"||location.protocol==="file:"
+    ? location.href.split("#")[0]
+    : location.origin+location.pathname;
+  return base+"#w="+encodeState(state);
+}
+
+function initEditor(){
+  renderAllTrays(); renderPreview();
+  $("#btnRandom").addEventListener("click",randomize);
+  $("#btnShare").addEventListener("click",()=>{
+    const url=buildShareUrl();
+    $("#shareUrl").value=url;
+    $("#btnPreview").href=url;
+    $("#shareBox").classList.add("show");
+    if(navigator.share){
+      const nb=$("#btnNative"); nb.style.display="inline-block";
+      nb.onclick=()=>navigator.share({title:"a window for you",text:"someone made you a window · wish you were here",url}).catch(()=>{});
+    }
+    $("#shareBox").scrollIntoView({behavior:"smooth",block:"nearest"});
+  });
+  $("#btnCopy").addEventListener("click",async()=>{
+    const inp=$("#shareUrl");
+    try{ await navigator.clipboard.writeText(inp.value); }
+    catch(err){ inp.select(); document.execCommand("copy"); }
+    const b=$("#btnCopy"); b.textContent="Copied ✓"; setTimeout(()=>b.textContent="Copy",1600);
+  });
+}
+
+/* ============ viewer ============ */
+function initViewer(st){
+  document.body.classList.add("viewing");
+  const sceneEl=$("#viewerScene");
+  sceneEl.innerHTML=drawScene(st,{reveal:true});
+  let opened=false;
+  sceneEl.addEventListener("click",()=>{
+    if(opened) return; opened=true;
+    sceneEl.classList.add("open");
+    $("#curtainHint").style.opacity="0";
+    setTimeout(()=>{
+      $("#vTo").textContent=st.to?("to "+st.to):"to you";
+      $("#vMsg").textContent=st.msg||"wish you were here.";
+      $("#vFrom").textContent="— "+(st.from||"someone thinking of you");
+      $("#msgCard").classList.add("show");
+      $("#makeOwn").classList.add("show");
+    },1900);
+  });
+  $("#makeOwnLink").addEventListener("click",(e)=>{
+    e.preventDefault();
+    history.replaceState(null,"",location.pathname+location.search);
+    location.reload();
+  });
+}
+
+/* ============ boot ============ */
+document.getElementById("footYear").textContent=new Date().getFullYear();
+(function boot(){
+  const h=location.hash;
+  if(h && h.startsWith("#w=")){
+    const st=decodeState(h.slice(3));
+    if(st){ initViewer(st); return; }
+  }
+  initEditor();
+})();
+</script>
+</body>
+</html>
