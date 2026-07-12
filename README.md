@@ -1,6 +1,6 @@
-# wish you were here
+# my current view
 
-Compose a little window scene — a view, the weather, some clutter on the sill, a note — and send it to someone you miss. They open the link to closed curtains, tap to draw them open, and the scene comes to life.
+Compose a little window scene — a view, the weather, some clutter on the sill, a note — and send it to someone. They open the link to closed curtains, tap to draw them open, and the scene comes to life.
 
 **Live:** https://vidhi1203.github.io/window-scene/
 

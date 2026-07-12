@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>wish you were here · make a window</title>
-<meta name="description" content="Compose a little window scene and send it to someone you miss.">
+<title>my current view · make a window</title>
+<meta name="description" content="Compose a little window scene and send it to someone.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="someone made you a window ✳">
+<meta property="og:title" content="my current view ✳">
 <meta property="og:description" content="a little view, some clutter on the sill, and a note — tap to draw the curtains.">
 <meta property="og:image" content="https://vidhi1203.github.io/window-scene/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:url" content="https://vidhi1203.github.io/window-scene/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="someone made you a window ✳">
+<meta name="twitter:title" content="my current view ✳">
 <meta name="twitter:description" content="a little view, some clutter on the sill, and a note — tap to draw the curtains.">
 <meta name="twitter:image" content="https://vidhi1203.github.io/window-scene/og-image.png">
 <meta name="theme-color" content="#faf4e8">
@@ -239,9 +239,9 @@
 
 <div id="editorPage">
   <header>
-    <div class="eyebrow">a little something to send</div>
-    <h1>wish you were here</h1>
-    <p class="sub">Compose a window — the view, the weather, the clutter on the sill — and send it to someone you miss.</p>
+    <div class="eyebrow">a quick little share</div>
+    <h1>my current view</h1>
+    <p class="sub">Compose a window — the view, the weather, the clutter on the sill — and send it to someone.</p>
   </header>
 
   <main>
@@ -272,9 +272,9 @@
         <section class="opt">
           <h2>Your note</h2>
           <div class="noteCard">
-            <div><label for="inTo">To</label><input id="inTo" maxlength="40" placeholder="dear you…"></div>
-            <div><label for="inMsg">Message</label><textarea id="inMsg" maxlength="400" placeholder="wish we were here, watching this together."></textarea></div>
-            <div><label for="inFrom">From</label><input id="inFrom" maxlength="40" placeholder="someone thinking of you"></div>
+            <div><label for="inTo">To</label><input id="inTo" maxlength="40" placeholder="hey…"></div>
+            <div><label for="inMsg">Message</label><textarea id="inMsg" maxlength="400" placeholder="thought you'd like this view."></textarea></div>
+            <div><label for="inFrom">From</label><input id="inFrom" maxlength="40" placeholder="your name"></div>
           </div>
         </section>
 
@@ -301,8 +301,8 @@
 
 <div id="viewer">
   <header>
-    <div class="eyebrow">someone made this for you</div>
-    <h1>a window, from afar</h1>
+    <div class="eyebrow">someone sent you this</div>
+    <h1>a little window</h1>
   </header>
   <main>
     <div class="viewerStage">
@@ -1287,7 +1287,7 @@ function initEditor(){
     $("#shareBox").classList.add("show");
     if(navigator.share){
       const nb=$("#btnNative"); nb.style.display="inline-block";
-      nb.onclick=()=>navigator.share({title:"a window for you",text:"someone made you a window · wish you were here",url}).catch(()=>{});
+      nb.onclick=()=>navigator.share({title:"my current view",text:"check out this window i made",url}).catch(()=>{});
     }
     $("#shareBox").scrollIntoView({behavior:"smooth",block:"nearest"});
   });
@@ -1368,8 +1368,8 @@ function initViewer(st){
       setTimeout(()=>$("#tapHint").classList.add("show"),2200);
     setTimeout(()=>{
       $("#vTo").textContent=st.to?("to "+st.to):"to you";
-      $("#vMsg").textContent=st.msg||"wish you were here.";
-      $("#vFrom").textContent="— "+(st.from||"someone thinking of you");
+      $("#vMsg").textContent=st.msg||"here's what it looks like right now.";
+      $("#vFrom").textContent="— "+(st.from||"a friend");
       $("#msgCard").classList.add("show");
       $("#makeOwn").classList.add("show");
     },1900);
