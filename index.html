@@ -173,6 +173,11 @@
   @keyframes swing{ from{transform:rotate(-3.5deg)} to{transform:rotate(3.5deg)} }
   .sunGlow{ animation:glowp 5s ease-in-out infinite alternate; }
   @keyframes glowp{ from{opacity:.35} to{opacity:.7} }
+  .auroraG{ transform-box:fill-box; transform-origin:center; animation:aurorasway 9s ease-in-out infinite alternate; }
+  .auroraG.a1{ animation-duration:8s; }
+  .auroraG.a2{ animation-duration:11s; animation-delay:-3s; }
+  .auroraG.a3{ animation-duration:13s; animation-delay:-6s; }
+  @keyframes aurorasway{ 0%{transform:translateX(-8px) scaleY(1); opacity:.75} 50%{transform:translateX(6px) scaleY(1.08); opacity:1} 100%{transform:translateX(-4px) scaleY(.96); opacity:.65} }
 
   /* doodle + touchable scene */
   .doodleBar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
@@ -206,7 +211,7 @@
   .revealGrp{ transition:opacity .5s ease 2.2s; }
   #viewerScene.open .revealGrp{ opacity:0; pointer-events:none; }
   @media (prefers-reduced-motion:reduce){
-    .cloud,.bob,.rainG,.snowG,.tw,.fly,.birds,.flame,.steam,.sway,.sunGlow{ animation:none !important; }
+    .cloud,.bob,.rainG,.snowG,.tw,.fly,.birds,.flame,.steam,.sway,.sunGlow,.auroraG{ animation:none !important; }
   }
 </style>
 </head>
@@ -398,6 +403,32 @@ const VIEWS = {
     <circle cx="143" cy="114" r="24" fill="#0d1737"/>
     <path d="M${VX} 356 Q150 322 235 352 T${VX+VW} 344 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#0c1430"/>
     <path d="M${VX} 384 Q180 358 ${VX+VW} 380 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#070d20"/>
+  `;}},
+  aurora:{ name:"Northern lights", draw(){ return `
+    <defs>
+      <linearGradient id="gAurSky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#050a1c"/><stop offset=".6" stop-color="#0b1836"/><stop offset="1" stop-color="#132a4a"/></linearGradient>
+      <linearGradient id="gAurBand1" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#38e29b" stop-opacity="0"/><stop offset=".45" stop-color="#38e29b" stop-opacity=".55"/><stop offset="1" stop-color="#2bd1c8" stop-opacity="0"/></linearGradient>
+      <linearGradient id="gAurBand2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#7fd8ff" stop-opacity="0"/><stop offset=".5" stop-color="#63c2f2" stop-opacity=".45"/><stop offset="1" stop-color="#a48cf0" stop-opacity="0"/></linearGradient>
+      <linearGradient id="gAurBand3" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#c98cf0" stop-opacity="0"/><stop offset=".5" stop-color="#d68cf0" stop-opacity=".35"/><stop offset="1" stop-color="#38e29b" stop-opacity="0"/></linearGradient>
+    </defs>
+    <rect x="${VX}" y="${VY}" width="${VW}" height="${VH}" fill="url(#gAurSky)"/>
+    ${(()=>{let r=rng(71),s="";for(let i=0;i<26;i++){s+=`<circle class="tw" style="animation-delay:${(r()*3.5).toFixed(1)}s;animation-duration:${(1.8+r()*2.4).toFixed(1)}s" cx="${(VX+6+r()*(VW-12)).toFixed(1)}" cy="${(VY+6+r()*130).toFixed(1)}" r="${(0.6+r()*1.2).toFixed(1)}" fill="#eef3ff"/>`;}return s;})()}
+    <g class="auroraG a1">
+      <path d="M${VX-20} 150 Q120 70 210 140 T${VX+VW+20} 120 V56 H${VX-20} Z" fill="url(#gAurBand1)"/>
+    </g>
+    <g class="auroraG a2">
+      <path d="M${VX-20} 200 Q140 110 230 190 T${VX+VW+20} 165 V56 H${VX-20} Z" fill="url(#gAurBand2)"/>
+    </g>
+    <g class="auroraG a3">
+      <path d="M${VX-20} 250 Q160 150 250 235 T${VX+VW+20} 205 V56 H${VX-20} Z" fill="url(#gAurBand3)"/>
+    </g>
+    <path d="M${VX} 356 Q150 320 235 350 T${VX+VW} 340 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#0e1c30"/>
+    <path d="M${VX} 386 Q180 362 ${VX+VW} 382 L${VX+VW} ${VB} L${VX} ${VB} Z" fill="#081120"/>
+    ${(()=>{let r=rng(73),s="";for(let i=0;i<9;i++){const x=VX+10+r()*(VW-20),y=372+r()*30,h=14+r()*12;s+=`<path d="M${x.toFixed(1)} ${(y-h).toFixed(1)} L${(x-5).toFixed(1)} ${y.toFixed(1)} L${(x+5).toFixed(1)} ${y.toFixed(1)} Z" fill="#0a1830"/>`;}return s;})()}
   `;}},
 };
 
