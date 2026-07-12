@@ -75,12 +75,24 @@
     display:flex; align-items:baseline; gap:8px;
   }
   section.opt h2 .hint{ font-family:ui-sans-serif,system-ui,sans-serif; font-size:11px; color:var(--ink-soft); font-weight:400; }
+  .trayWrap{ position:relative; }
   .tray{
-    display:flex; gap:10px; overflow-x:auto; padding:4px 2px 10px;
-    scrollbar-width:thin;
+    display:flex; gap:10px; overflow-x:auto; padding:4px 2px 6px;
+    scrollbar-width:none;
   }
-  .tray::-webkit-scrollbar{height:6px}
-  .tray::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+  .tray::-webkit-scrollbar{ display:none; }
+  .trayBar{
+    height:5px; margin:0 2px 4px; border-radius:3px; background:var(--line);
+    position:relative; cursor:pointer; display:none;
+  }
+  .trayBar.show{ display:block; }
+  .trayBarThumb{
+    position:absolute; top:0; left:0; height:100%; border-radius:3px;
+    background:var(--accent); opacity:.55; cursor:grab;
+    transition:opacity .15s ease;
+  }
+  .trayBarThumb:hover,.trayBarThumb.dragging{ opacity:.85; }
+  .trayBarThumb.dragging{ cursor:grabbing; }
   .swatch{
     flex:0 0 auto; width:84px; cursor:pointer; border:2px solid var(--line);
     border-radius:14px; background:var(--card); padding:8px 6px 7px;
@@ -125,9 +137,6 @@
   .shareBox .row{ display:flex; gap:8px; }
   .shareBox input{ flex:1; font-size:13px; font-family:ui-monospace,Menlo,monospace; border:1px solid var(--line); border-radius:8px; padding:9px 10px; color:var(--ink-soft); background:#fffef9; min-width:0; }
   .shareBox .note{ font-size:12px; font-family:ui-sans-serif,system-ui,sans-serif; color:var(--ink-soft); }
-
-  footer{ text-align:center; padding:30px 16px 40px; color:var(--ink-soft); font-size:13px; }
-  footer a{ color:var(--accent); }
 
   /* ---------- viewer ---------- */
   #viewer{ display:none; }
@@ -242,14 +251,14 @@
       </div>
 
       <div class="panel">
-        <section class="opt" id="sec-view"><h2>The view <span class="hint">what's out there</span></h2><div class="tray"></div></section>
-        <section class="opt" id="sec-weather"><h2>The weather <span class="hint">optional</span></h2><div class="tray"></div></section>
-        <section class="opt" id="sec-frame"><h2>The frame</h2><div class="tray"></div></section>
-        <section class="opt" id="sec-curtain"><h2>Curtains</h2><div class="tray"></div></section>
-        <section class="opt" id="sec-items"><h2>On the sill <span class="hint">tap to add · up to 5</span></h2><div class="tray"></div></section>
-        <section class="opt" id="sec-extras"><h2>Hanging up <span class="hint">tap to toggle</span></h2><div class="tray"></div></section>
+        <section class="opt" id="sec-view"><h2>The view <span class="hint">what's out there</span></h2><div class="trayWrap"><div class="tray"></div><div class="trayBar" aria-hidden="true"><div class="trayBarThumb"></div></div></div></section>
+        <section class="opt" id="sec-weather"><h2>The weather <span class="hint">optional</span></h2><div class="trayWrap"><div class="tray"></div><div class="trayBar" aria-hidden="true"><div class="trayBarThumb"></div></div></div></section>
+        <section class="opt" id="sec-frame"><h2>The frame</h2><div class="trayWrap"><div class="tray"></div><div class="trayBar" aria-hidden="true"><div class="trayBarThumb"></div></div></div></section>
+        <section class="opt" id="sec-curtain"><h2>Curtains</h2><div class="trayWrap"><div class="tray"></div><div class="trayBar" aria-hidden="true"><div class="trayBarThumb"></div></div></div></section>
+        <section class="opt" id="sec-items"><h2>On the sill <span class="hint">tap to add · up to 5</span></h2><div class="trayWrap"><div class="tray"></div><div class="trayBar" aria-hidden="true"><div class="trayBarThumb"></div></div></div></section>
+        <section class="opt" id="sec-extras"><h2>Hanging up <span class="hint">tap to toggle</span></h2><div class="trayWrap"><div class="tray"></div><div class="trayBar" aria-hidden="true"><div class="trayBarThumb"></div></div></div></section>
 
-        <section class="opt" id="sec-sound"><h2>Ambient sound <span class="hint">tap to preview</span></h2><div class="tray"></div></section>
+        <section class="opt" id="sec-sound"><h2>Ambient sound <span class="hint">tap to preview</span></h2><div class="trayWrap"><div class="tray"></div><div class="trayBar" aria-hidden="true"><div class="trayBarThumb"></div></div></div></section>
 
         <section class="opt" id="sec-doodle">
           <h2>On the glass <span class="hint">fog it up and draw with your finger — they'll watch it appear</span></h2>
@@ -313,7 +322,6 @@
   </main>
 </div>
 
-<footer>made with a little longing · <span id="footYear"></span></footer>
 
 <script>
 "use strict";
@@ -1197,7 +1205,62 @@ function randomize(){
   const ids=Object.keys(ITEMS).sort(()=>Math.random()-0.5);
   state.items=ids.slice(0,2+Math.floor(Math.random()*3));
   state.extras=Object.keys(EXTRAS).filter(()=>Math.random()<0.35);
-  renderAllTrays(); renderPreview();
+  renderAllTrays(); renderPreview(); updateAllTrayBars();
+}
+
+/* --- draggable scrollbar under each tray --- */
+function updateTrayBar(tray){
+  const wrap=tray.parentElement;
+  const bar=wrap.querySelector(".trayBar"), thumb=wrap.querySelector(".trayBarThumb");
+  if(!bar||!thumb) return;
+  const scrollable=tray.scrollWidth > tray.clientWidth + 2;
+  bar.classList.toggle("show", scrollable);
+  if(!scrollable) return;
+  const barW=bar.clientWidth;
+  const thumbW=Math.max(28, barW*(tray.clientWidth/tray.scrollWidth));
+  const maxThumbX=barW-thumbW;
+  const maxScroll=tray.scrollWidth-tray.clientWidth;
+  const thumbX=maxScroll>0 ? (tray.scrollLeft/maxScroll)*maxThumbX : 0;
+  thumb.style.width=thumbW+"px";
+  thumb.style.transform="translateX("+thumbX+"px)";
+}
+function updateAllTrayBars(){
+  document.querySelectorAll(".trayWrap .tray").forEach(updateTrayBar);
+}
+function initTrayBars(){
+  document.querySelectorAll(".trayWrap").forEach(wrap=>{
+    const tray=wrap.querySelector(".tray"), bar=wrap.querySelector(".trayBar"), thumb=wrap.querySelector(".trayBarThumb");
+    if(!tray||!bar||!thumb) return;
+    updateTrayBar(tray);
+    tray.addEventListener("scroll",()=>updateTrayBar(tray),{passive:true});
+    const dragTo=clientX=>{
+      const barRect=bar.getBoundingClientRect();
+      const thumbW=thumb.getBoundingClientRect().width;
+      const maxThumbX=barRect.width-thumbW;
+      const maxScroll=tray.scrollWidth-tray.clientWidth;
+      let x=clientX-barRect.left-thumbW/2;
+      x=Math.max(0,Math.min(maxThumbX,x));
+      tray.scrollLeft = maxThumbX>0 ? (x/maxThumbX)*maxScroll : 0;
+    };
+    thumb.addEventListener("pointerdown",ev=>{
+      ev.preventDefault();
+      thumb.classList.add("dragging");
+      try{ thumb.setPointerCapture(ev.pointerId); }catch(e){}
+      const onMove=mv=>dragTo(mv.clientX);
+      const onUp=()=>{
+        thumb.classList.remove("dragging");
+        window.removeEventListener("pointermove",onMove);
+        window.removeEventListener("pointerup",onUp);
+      };
+      window.addEventListener("pointermove",onMove);
+      window.addEventListener("pointerup",onUp);
+    });
+    bar.addEventListener("pointerdown",ev=>{
+      if(ev.target===thumb) return;
+      dragTo(ev.clientX);
+    });
+  });
+  window.addEventListener("resize",updateAllTrayBars);
 }
 
 function buildShareUrl(){
@@ -1212,6 +1275,7 @@ function buildShareUrl(){
 
 function initEditor(){
   renderAllTrays(); renderPreview();
+  initTrayBars();
   initDoodle();
   attachInteractions($("#previewCard"), true);
   $("#btnRandom").addEventListener("click",randomize);
@@ -1318,7 +1382,6 @@ function initViewer(st){
 }
 
 /* ============ boot ============ */
-document.getElementById("footYear").textContent=new Date().getFullYear();
 (function boot(){
   const h=location.hash;
   if(h && h.startsWith("#w=")){
